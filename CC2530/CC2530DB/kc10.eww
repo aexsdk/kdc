@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<workspace>
+  <project>
+    <path>$WS_DIR$\kc10.ewp</path>
+  </project>
+  <batchBuild>
+    <batchDefinition>
+      <name>ALL</name>
+      <member>
+        <project>kc10</project>
+        <configuration>DemoEB</configuration>
+      </member>
+      <member>
+        <project>kc10</project>
+        <configuration>CoordinatorEB</configuration>
+      </member>
+      <member>
+        <project>kc10</project>
+        <configuration>RouterEB</configuration>
+      </member>
+      <member>
+        <project>kc10</project>
+        <configuration>EndDeviceEB</configuration>
+      </member>
+    </batchDefinition>
+  </batchBuild>
+</workspace>
+
+
