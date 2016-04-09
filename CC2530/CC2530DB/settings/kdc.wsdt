@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<Workspace>
+  <ConfigDictionary>
+    
+  <CurrentConfigs><Project>kdc/DemoEB</Project></CurrentConfigs></ConfigDictionary>
+  <Desktop>
+    <Static>
+      <Workspace>
+        <ColumnWidths>
+          
+          
+          
+          
+        <Column0>196</Column0><Column1>53</Column1><Column2>27</Column2><Column3>0</Column3></ColumnWidths>
+      </Workspace>
+    <Build><ColumnWidth0>20</ColumnWidth0><ColumnWidth1>800</ColumnWidth1><ColumnWidth2>414</ColumnWidth2><ColumnWidth3>69</ColumnWidth3></Build><Debug-Log><ColumnWidth0>20</ColumnWidth0><ColumnWidth1>1382</ColumnWidth1></Debug-Log><TerminalIO/><Disassembly><MixedMode>1</MixedMode><CodeCovShow>1</CodeCovShow><InstrProfShow>1</InstrProfShow></Disassembly><Find-in-Files><ColumnWidth0>434</ColumnWidth0><ColumnWidth1>62</ColumnWidth1><ColumnWidth2>744</ColumnWidth2></Find-in-Files></Static>
+    <Windows>
+      
+    <Wnd1>
+        <Tabs>
+          <Tab>
+            <Identity>TabID-30854-7440</Identity>
+            <TabName>Workspace</TabName>
+            <Factory>Workspace</Factory>
+            <Session>
+              
+            <NodeDict><ExpandedNode>kdc</ExpandedNode></NodeDict></Session>
+          </Tab>
+        </Tabs>
+        
+      <SelectedTab>0</SelectedTab></Wnd1><Wnd3><Tabs><Tab><Identity>TabID-7623-18314</Identity><TabName>Build</TabName><Factory>Build</Factory><Session/></Tab><Tab><Identity>TabID-23526-11157</Identity><TabName>Debug Log</TabName><Factory>Debug-Log</Factory><Session/></Tab><Tab><Identity>TabID-32648-2717</Identity><TabName>Find in Files</TabName><Factory>Find-in-Files</Factory><Session/></Tab></Tabs><SelectedTab>0</SelectedTab></Wnd3></Windows>
+    <Editor>
+      
+      
+      
+      
+    <Pane><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\OSAL_ParkingApp.c</Filename><XPos>0</XPos><YPos>98</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\Source\kkwAppHw.c</Filename><XPos>0</XPos><YPos>66</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\Source\pcf8574pwr.c</Filename><XPos>0</XPos><YPos>189</YPos><SelStart>4838</SelStart><SelEnd>4838</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\Source\tca9535.h</Filename><XPos>0</XPos><YPos>3</YPos><SelStart>380</SelStart><SelEnd>403</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\Source\tca9535.c</Filename><XPos>0</XPos><YPos>216</YPos><SelStart>4153</SelStart><SelEnd>4166</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\Source\pcf8574pwr.h</Filename><XPos>0</XPos><YPos>2</YPos><SelStart>158</SelStart><SelEnd>158</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\ParkingApp.h</Filename><XPos>0</XPos><YPos>164</YPos><SelStart>6836</SelStart><SelEnd>6852</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\ParkingAppC.c</Filename><XPos>0</XPos><YPos>721</YPos><SelStart>22143</SelStart><SelEnd>22143</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\Source\kkwAppHw.h</Filename><XPos>0</XPos><YPos>82</YPos><SelStart>4549</SelStart><SelEnd>4562</SelEnd></Tab><ActiveTab>8</ActiveTab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
+    <Positions>
+      
+      
+      
+      
+      
+    <Top><Row0><Sizes><Toolbar-012db658><key>iaridepm.enu1</key></Toolbar-012db658></Sizes></Row0></Top><Left><Row0><Sizes><Wnd1><Rect><Top>-2</Top><Left>-2</Left><Bottom>630</Bottom><Right>296</Right><x>-2</x><y>-2</y><xscreen>73</xscreen><yscreen>58</yscreen><sizeHorzCX>50694</sizeHorzCX><sizeHorzCY>69712</sizeHorzCY><sizeVertCX>206944</sizeVertCX><sizeVertCY>759615</sizeVertCY></Rect></Wnd1></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd3><Rect><Top>-2</Top><Left>-2</Left><Bottom>157</Bottom><Right>1442</Right><x>-2</x><y>-2</y><xscreen>1444</xscreen><yscreen>159</yscreen><sizeHorzCX>1002778</sizeHorzCX><sizeHorzCY>191106</sizeHorzCY><sizeVertCX>50694</sizeVertCX><sizeVertCY>69712</sizeVertCY></Rect></Wnd3></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
+  </Desktop>
+</Workspace>
+
+
