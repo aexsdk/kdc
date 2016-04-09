@@ -120,7 +120,8 @@ extern "C"
                                                     break; \
                                                 default: \
                                                     P##port##INP |= BV(pin); \
-                                                    break; } )
+                                                    break; } \
+                                                )
 
   #define KKW_IO_OUTPUT_PREP(port, pin, val)  st( P##port##SEL &= ~BV(pin); \
                                                 P##port##_##pin## = val; \

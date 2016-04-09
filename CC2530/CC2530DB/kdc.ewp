@@ -446,6 +446,7 @@
         <option>
           <name>CCIncludePath2</name>
           <state>$PROJ_DIR$</state>
+          <state>$PROJ_DIR$\Source</state>
           <state>$PROJ_DIR$\..\Source</state>
           <state>$PROJ_DIR$\..\..\..\ZMain\TI2530DB</state>
           <state>$PROJ_DIR$\..\..\..\..\..\Components\hal\include</state>
@@ -6416,6 +6417,12 @@
       <name>$PROJ_DIR$\Source\ds18b20.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\Source\i2c.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Source\i2c.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\Source\kkwAppHw.c</name>
     </file>
     <file>
@@ -6435,6 +6442,12 @@
     </file>
     <file>
       <name>$PROJ_DIR$\Source\pcf8574pwr.h</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Source\rns110.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\Source\rns110.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\Source\tca9535.c</name>

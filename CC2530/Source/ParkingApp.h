@@ -161,12 +161,9 @@ typedef struct {
 #define KKW_CMD_SETIO_MAX               0xCFFF      //上位机要求协调器或终端设置IO状态的命令结束
 #define KKW_CMD_NFC_WRITE               0xD001      //向N110写数据的命令
 #define KKW_CMD_NFC_READ                0xD002      //从N110读数据的命令
-
-#define KKW_EVT_FIND                    0xF101      //模块发现或丢失命令
-#define KKW_EVT_TEMP                    0xF201      //向上位机报告温度信息
-#define KKW_EVT_HUMI                    0xF202      //向上位机报告湿度信息
-#define KKW_EVT_POSITION                0xF203      //向上位机报告酒位状态信息
-#define KKW_EVT_KEYPAD                  0xF300      //报告按键信息
+#define KKW_CMD_NFC_VEN                 0xD011      //控制N110的ENABLE的命令
+#define KKW_CMD_NFC_UPGRADE             0xD012      //控制N110的UPGRADE的命令
+#define KKW_CMD_DOOR_CTRL               0xD021      //控制门的的命令
 
 #define KKW_EVT_IN_MIN                  0xC000      //协调器和终端报告IO状态的事件最小值      
 #define KKW_EVT_IN_MAX                  0xCFFF      //协调器和终端报告IO状态的事件的最大值
@@ -178,6 +175,12 @@ typedef struct {
 #define KKW_EVT_RECV_UART0              0xE201      //协调器或终端的UART0上收到的数据
 #define KKW_EVT_RECV_UART1              0xE202      //协调器或终端的UART1上收到的数据
 #define KKW_EVT_DEBUG_TEST              0xE300      
+#define KKW_EVT_FIND                    0xF101      //模块发现或丢失命令
+#define KKW_EVT_TEMP                    0xF201      //向上位机报告温度信息
+#define KKW_EVT_HUMI                    0xF202      //向上位机报告湿度信息
+#define KKW_EVT_POSITION                0xF203      //向上位机报告酒位状态信息
+#define KKW_EVT_KEYPAD                  0xF300      //报告按键信息
+#define KKW_EVT_NFC_READ                0xFD01      //
 #define KKW_EVT_NODEFINE                0x0000
 
 #define KKWAPP_EVT_MSG_START            0x0010

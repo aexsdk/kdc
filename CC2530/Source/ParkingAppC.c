@@ -44,7 +44,8 @@
 #endif
 #include "pcf8574pwr.h"
 #include "tca9535.h"
-
+#include "i2c.h"
+#include "rns110.h"
 /*********************************************************************
  * MACROS
  */
@@ -138,8 +139,8 @@ void App_SendSample(unsigned char *buf, unsigned char len, uint16 option);
 void App_Init_Fun(void);
 void Set_IO(uint16 option,uint8 flag);
 void Set_I2CIO(uint16 option, uint8 flag);
-void KKW_I2CIO_SetValue(uint8 address,  uint16 nv,uint16 mask);
-uint16 KKW_I2CIO_GetValue(uint8 address, uint16 mask);
+void KKW_I2CIO_SetValue(uint8 address,uint16 nv,uint16 mask);
+uint16 KKW_I2CIO_GetValue(uint8 address,uint16 mask);
 uint8 openUart(uint8 whichport, uint8 baudrate);
 void writeUart(uint8 whichport, cmd_msg_t* command);
 void SerialApp_Send(uint8 port,unsigned char *buf, unsigned char len);
@@ -156,6 +157,8 @@ void kkw_gpio_clr(uint8 index);
 void kkw_init_beep(void);
 void kkw_beep(uint8 onoff,uint32 timeout);
 void kkw_stop_beep_timeout(void);
+void TCA9535_ISR(void);
+void RNS110_ISR(void);
 /*********************************************************************
  * NETWORK LAYER CALLBACKS
  */
@@ -193,9 +196,6 @@ void kkw_beep(uint8 onoff,uint32 timeout)
 void kkw_stop_beep_timeout(void)
 {
   KKW_IO_SET(1,0,1);
-  P0IFG &= ~0x01;
-  P0IF = 0;
-  EA = 1;
 }
 
 /*********************************************************************
@@ -425,7 +425,9 @@ uint16 ParkingApp_ProcessEvent( uint8 task_id, uint16 events )
   }
   if( (events & KKWAPP_HEART_TIMER) == KKWAPP_HEART_TIMER ){
     char buf[100];
-    sprintf(buf,"Heart IO=0x%X",KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF));
+    //uint16 v = KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF);
+
+    sprintf(buf,"Heart");
     App_SendSample(buf, strlen((char *)buf), KKW_EVT_LOG);
     osal_start_timerEx( ParkingApp_TaskID,KKWAPP_HEART_TIMER,KKWAPP_HEART_TIMEOUT);
     return (events ^ KKWAPP_HEART_TIMER);
@@ -628,13 +630,16 @@ void ReportDeviceDiscovery(void)
 void App_Init_Fun(void)
 {
   ReportDeviceDiscovery();
+  Init_I2C();
 #ifdef KKW_USE_TCA9535
   Init_TCA9535();
 #endif
 #ifdef KKW_USE_POSITION
   Init_PCF8574();
 #endif
-  
+  Init_RNS110();
+  KKW_IO_DIR_OUTPUT(1,6);   //设置继电器1的控制为输出
+  KKW_IO_DIR_OUTPUT(1,7);   //设置继电器2的控制为输出
 #ifdef USE_PRE_IO_PORT 
   //KKW_GPIO_PULL_DN(KKIO_IN_1);    //P1.1
   KKW_GPIO_PULL_DN(KKIO_IN_2);    //P1.2
@@ -657,12 +662,12 @@ void App_Init_Fun(void)
    
 #ifdef KKW_USE_PORT0ISR
   //端口0上使用中断，I2C使用P0.0做中断
-  P0IEN |= BV(0);       //P0.0可以产生中断
-  PICTL |= BV(0);      //端口0 0-7下降沿引起中断
+  //P0IEN |= BV(0);       //P0.0可以产生中断
+  //PICTL |= BV(0);      //端口0 0-7下降沿引起中断
   //PICTL &= ~BV(0);     //端口0 0-7上升沿引起中断
-  IEN1 |= BV(5);
-  P0IFG &= BV(0);
-  EA = 1;
+  //IEN1 |= BV(5);
+  //P0IFG &= BV(0);
+  //EA = 1;
   
   KKW_IO_OUTPUT(0,7,1);   //拉高NFC_VEN引脚，复位N110
 #endif
@@ -691,6 +696,77 @@ void Delayms(int xms)   //i=xms
    for(j=587;j>0;j--);    //j=587
 }
 
+static int find_bit(unsigned int value)
+{
+  int i = 0;
+  
+  for(i = 0;i<32;i++)
+  {
+    if(value & (1<<i)){
+      return i;
+    }
+  }
+  return -1;
+}
+
+void RNS110_ISR(void)
+{
+  char buf[256];
+  //从NFC读取数据的指令
+  BYTE len = RNS110_Read(buf,sizeof(buf));
+  App_SendSample(buf,len,KKW_EVT_NFC_READ);
+}
+
+void TCA9535_ISR(void)
+{
+  static uint16 keypad = 0;
+  static int    b = -1;
+  uint16 value;
+  char buf[20];
+  
+  value = KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF);
+  if(value == 0xFFFF){
+    #if 0
+      buf[0] = (unsigned char)((value>>8)&0xFF);
+      buf[1] = (unsigned char)value&0xFF;
+      //上报按键按下原始信息
+      App_SendSample(buf, 2, KKW_EVT_IO | TCA9535_IC_SlaveAddress);
+    #else
+
+      if(b != -1){
+          //正式使用上报按键信息
+          memset(buf,0,sizeof(buf));
+          buf[0] = (unsigned char)((keypad>>8)&0xFF);
+          buf[1] = (unsigned char)keypad&0xFF;
+          buf[2] = 10;
+          App_SendSample(buf, 3, KKW_EVT_IN_MIN|(TCA9535_IC_SlaveAddress<<4)|b );
+          b = -1;
+      }
+    #endif
+  }else{
+    #if 0
+      //调试上报按键按下原始信息
+      buf[0] = (unsigned char)((value>>8)&0xFF);
+      buf[1] = (unsigned char)value&0xFF;
+      App_SendSample(buf, 2, KKW_EVT_IO | TCA9535_IC_SlaveAddress);
+    #else
+      keypad = ~value;
+      b = find_bit(keypad);
+      if(b != -1){
+        //正式使用上报按键信息
+        /*
+        memset(buf,0,sizeof(buf));
+        buf[0] = (unsigned char)((keypad>>8)&0xFF);
+        buf[1] = (unsigned char)keypad&0xFF;
+        buf[2] = 0;
+        App_SendSample(buf, 3, KKW_EVT_IN_MIN|(TCA9535_IC_SlaveAddress<<4)|b );
+        */
+        kkw_beep(2,KKWAPP_STOP_BEEP_KEY);
+      }
+    #endif
+  }
+}
+
 #ifdef KKW_USE_PORT0ISR
 /*
   PORT0产生中断后执行此函数
@@ -704,51 +780,11 @@ HAL_ISR_FUNCTION( halKeyPort0Isr, P0INT_VECTOR )
 
   if((P0IFG & 0x01)==0x01) //p0.0  
   { 
-    static uint16 keypad = 0;
-    uint16 value;
     //I2C产生中断
     //KEY使用P0.0中断
 #ifdef KKW_USE_TCA9535
-    value = KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF);
-    if(value == 0xFFFF){
-      #if 0
-        buf[0] = (unsigned char)((value>>8)&0xFF);
-        buf[1] = (unsigned char)value&0xFF;
-        //上报按键按下原始信息
-        App_SendSample(buf, 2, KKW_EVT_IO | TCA9535_IC_SlaveAddress);
-      #else
-        if(keypad != 0xFFFF && keypad != 0){
-          uint8 b = log(keypad)/log(2);
-          
-          if(keypad == 0x8000)
-            b = 15;   //bc log(0x8000)/log(2)=14
-          kkw_beep(2,KKWAPP_STOP_BEEP_KEY);
-          //按键抬起上报具体的按键
-          if(0){
-            //调试按键抬起时上报按键信息
-            sprintf(buf,"IO=0x%X,b=%d",keypad,b);
-            App_SendSample(buf, strlen((char *)buf), KKW_EVT_LOG);
-          }else{
-            //正式使用上报按键信息
-            memset(buf,0,sizeof(buf));
-            buf[0] = (unsigned char)((keypad>>8)&0xFF);
-            buf[1] = (unsigned char)keypad&0xFF;
-            App_SendSample(buf, 2, KKW_EVT_IN_MIN|(TCA9535_IC_SlaveAddress<<4)|b );
-          }
-          return;
-        }
-      #endif
-    }else{
-      #if 0
-        //调试上报按键按下原始信息
-        buf[0] = (unsigned char)((value>>8)&0xFF);
-        buf[1] = (unsigned char)value&0xFF;
-        App_SendSample(buf, 2, KKW_EVT_IO | TCA9535_IC_SlaveAddress);
-      #else
-        keypad = ~value;    //保存按键信息
-      #endif
-    }
     //sprintf(buf,"IO=0x%X",value);
+    TCA9535_ISR();
     //App_SendSample(buf, strlen((char *)buf), KKW_EVT_LOG);
 #endif
 
@@ -770,10 +806,10 @@ HAL_ISR_FUNCTION( halKeyPort0Isr, P0INT_VECTOR )
 #endif
     P0IFG &= ~0x01;
   }
-  if((P0IFG & 0x80) == 0x80) //p0.7
+  if((P0IFG & 0x40) == 0x40) //p0.6
   {    
-    //NFC使用P0.7中断
-    P0IFG &= ~0x80;
+    //RNS110_ISR();
+    P0IFG &= ~0x40;
   }
   /*if((P0IFG & 0x02) == 0x02) //p0.1
   {    
@@ -810,6 +846,11 @@ HAL_ISR_FUNCTION( halKeyPort0Isr, P0INT_VECTOR )
     P0IFG &= ~0x40;
     buf[0] = 0x00;
     App_SendSample(buf, 1, 0xC006);
+  }
+  if((P0IFG & 0x80) == 0x80) //p0.7
+  {    
+    //NFC使用P0.7中断
+    P0IFG &= ~0x80;
   }
   */
   //P0IFG = 0x00; //P0.0~P0.7中断标志清0 
@@ -1038,14 +1079,40 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
     }
     break;
   case KKW_CMD_NFC_READ:
-    //从NFC读取数据的指令
-    //command->length
-    //command->controlmsg
+    {
+      char buf[256];
+      //从NFC读取数据的指令
+      BYTE len = RNS110_Read(buf,sizeof(buf));
+      App_SendSample(buf,len,KKW_EVT_NFC_READ);
+    }
     break;
   case KKW_CMD_NFC_WRITE:
-    //向NFC写入数据的指令
-    //command->length
-    //command->controlmsg
+    {
+      //向NFC写入数据的指令
+      RNS110_Write(command->controlmsg,command->length);
+    }
+    break;
+  case KKW_CMD_NFC_VEN:
+    if(command->length > 0){
+      BYTE flag = command->controlmsg[0];
+      RNS110_SetPower(flag);
+    }
+    break;
+  case KKW_CMD_NFC_UPGRADE:
+    if(command->length > 0){
+      BYTE flag = command->controlmsg[0];
+      RNS110_SetUpgrade(flag);
+    }
+    break;
+  case KKW_CMD_DOOR_CTRL:
+    if(command->length > 2){
+      uint8 door = command->controlmsg[0];
+      uint8 flag = command->controlmsg[1];
+      if(door == 0)
+        P1_6 = flag;
+      else
+        P1_7 = flag;
+    }
     break;
   default:
     Set_IO(cmd,(uint8)command->controlmsg[0]);
