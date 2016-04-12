@@ -13,6 +13,7 @@
  * INCLUDES
  */
 #include "stdio.h"
+#include <stdarg.h>
 #include "math.h"
 #include <ioCC2530.h>
 #include "OSAL.h"
@@ -159,6 +160,7 @@ void kkw_beep(uint8 onoff,uint32 timeout);
 void kkw_stop_beep_timeout(void);
 void TCA9535_ISR(void);
 void RNS110_ISR(void);
+void LogUart(char *fmt,...);
 /*********************************************************************
  * NETWORK LAYER CALLBACKS
  */
@@ -217,8 +219,6 @@ void ParkingApp_Init( uint8 task_id )
   //uint8 r;
   halUARTCfg_t uartConfig;
   
-  //开始应用初始化，闪灯
-  //HalLedSet(HAL_LED_1,HAL_LED_MODE_FLASH);
 #ifdef KKW_HAS_LED
   HalLedBlink( HAL_LED_1, 10, 50, 1000 );
 #endif
@@ -226,17 +226,7 @@ void ParkingApp_Init( uint8 task_id )
   ParkingApp_TaskID = task_id;
   ParkingApp_NwkState = DEV_INIT;
   ParkingApp_TransID = 0;
-  //HalLedSet(HAL_LED_1,HAL_LED_MODE_OFF);
-
-  // Device hardware initialization can be added here or in main() (Zmain.c).
-  // If the hardware is application specific - add it here.
-  // If the hardware is other parts of the device add it in main().
-
 #if defined ( BUILD_ALL_DEVICES )
-  // The "Demo" target is setup to have BUILD_ALL_DEVICES and HOLD_AUTO_START
-  // We are looking at a jumper (defined in ParkingAppHw.c) to be jumpered
-  // together - if they are - we will start up a coordinator. Otherwise,
-  // the device will start as a router.
   if ( readCoordinatorJumper() )
     zgDeviceLogicalType = ZG_DEVICETYPE_COORDINATOR;
   else
@@ -250,15 +240,9 @@ void ParkingApp_Init( uint8 task_id )
 #endif // BUILD_ALL_DEVICES
 
 #if defined ( HOLD_AUTO_START )
-  // HOLD_AUTO_START is a compile option that will surpress ZDApp
-  //  from starting the device and wait for the application to
-  //  start the device.
   ZDOInitDevice(0);
 #endif
   if(zgDeviceLogicalType == ZG_DEVICETYPE_ENDDEVICE){
-    //EndpointDevice need below block
-    // Setup for the periodic message's destination address
-    // Broadcast to everyone
     #if (defined DATABROADCAST && DATABROADCAST == TRUE)
       ParkingApp_Periodic_DstAddr.addrMode = (afAddrMode_t)AddrBroadcast; //afAddr16Bit;
       ParkingApp_Periodic_DstAddr.addr.shortAddr = 0xFFFF; // 0x0000;
@@ -300,7 +284,6 @@ void ParkingApp_Init( uint8 task_id )
     uartConfig.intEnable            = TRUE;                 // 2x30 don't care - see uart driver.
     uartConfig.callBackFunc         = SerialApp_CallBack;
     HalUARTOpen (SERIAL_APP_PORT, &uartConfig);  
-    //HalUARTWrite(SERIAL_APP_PORT,"\r\nSampleApp Runing...\r\n",23);
     // Set TXPOWER
     MAC_MlmeSetReq( ZMacPhyTransmitPower, &txPower );
     App_SendSample("Coordinator started.",21,KKW_EVT_LOG);
@@ -424,23 +407,12 @@ uint16 ParkingApp_ProcessEvent( uint8 task_id, uint16 events )
     return (events ^ KKWAPP_STOP_BEEP_KEY);
   }
   if( (events & KKWAPP_HEART_TIMER) == KKWAPP_HEART_TIMER ){
-    char buf[100];
-    //uint16 v = KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF);
+    uint16 v = KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF);
 
-    sprintf(buf,"Heart");
-    App_SendSample(buf, strlen((char *)buf), KKW_EVT_LOG);
+    //LogUart("Heart");
     osal_start_timerEx( ParkingApp_TaskID,KKWAPP_HEART_TIMER,KKWAPP_HEART_TIMEOUT);
     return (events ^ KKWAPP_HEART_TIMER);
   }
-//  if ( events & PARKINGAPP_SEND_PERIODIC_MSG_EVT )
-//  {
-//    Process_Period_Event();
-//    // return unprocessed events
-//    osal_start_timerEx( ParkingApp_TaskID,PARKINGAPP_SEND_PERIODIC_MSG_EVT,PARKINGAPP_SEND_PERIODIC_MSG_TIMEOUT);
-//    return (events ^ PARKINGAPP_SEND_PERIODIC_MSG_EVT);
-//  }
-//#endif
-  // Discard unknown events
   return 0;
 }
 
@@ -525,18 +497,6 @@ void Process_Read_Humi(void)
 }
 #endif
 
-/*下面的定义和函数主要用于位置状态读取
-*/
-// 酒位管理
-//#define POS_LD  P1_1
-//#define POS_CLK P1_2
-//#define POS_Q7  P1_3
-
-//#define POS_LD  P2_2
-//#define POS_CLK P1_0
-//#define POS_Q7  P1_1
-//#define POS_MAX_NUM   10
-
 void DelayXus(uint32 n)
 {
   unsigned int i;
@@ -584,16 +544,6 @@ void ParkingApp_MessageMSGCB( afIncomingMSGPacket_t *pkt )
       }
     }
     break;
-//  case PARKINGAPP_CONFIRM_CLUSTERID:
-//    if(pkt->cmd.Data[0] == 0xBB && pkt->cmd.Data[payloadlen - 1] == 0xCC)
-//    {
-//      if ( HalUARTWrite ( SERIAL_APP_PORT, pkt->cmd.Data, payloadlen))
-//      {
-//        HalLedBlink( HAL_LED_1, 2, 25, 50);
-//      }
-//    }
-//    break;
-//    
   case PARKINGAPP_FLASH_CLUSTERID:
     {
       Process_Command((cmd_msg_t*)pkt->cmd.Data, pkt->cmd.DataLength);
@@ -602,6 +552,19 @@ void ParkingApp_MessageMSGCB( afIncomingMSGPacket_t *pkt )
   default:
     break;
   }
+}
+
+void LogUart(char *fmt,...)
+{
+  char buf[256];
+  va_list args;
+  
+  memset(buf,0,sizeof(buf));
+  va_start(args, fmt);
+  vsprintf(buf, fmt, args);
+  va_end(args);
+
+  App_SendSample((unsigned char*)buf, strlen((char *)buf), KKW_EVT_LOG);     
 }
 
 //报告设备发现命令，如果是协调器则会直接通过串口上报，如果是终端设备则通过传感网
@@ -615,7 +578,8 @@ void ReportDeviceDiscovery(void)
   uint16 option = KKW_EVT_FIND;
   buf[0]=0x01;
   App_SendSample(buf, 1, option); 
-}  
+}
+
 /*********************************************************************
  * @fn      App_Init_Fun()
  *
@@ -629,7 +593,12 @@ void ReportDeviceDiscovery(void)
  */
 void App_Init_Fun(void)
 {
-  ReportDeviceDiscovery();
+  int ret = 0;
+  
+  KKW_IO_DIR_OUTPUT(1,6);   //设置继电器1的控制为输出
+  KKW_IO_DIR_OUTPUT(1,7);   //设置继电器2的控制为输出
+  //ReportDeviceDiscovery();
+  kkw_beep(1,0);
   Init_I2C();
 #ifdef KKW_USE_TCA9535
   Init_TCA9535();
@@ -638,8 +607,9 @@ void App_Init_Fun(void)
   Init_PCF8574();
 #endif
   Init_RNS110();
-  KKW_IO_DIR_OUTPUT(1,6);   //设置继电器1的控制为输出
-  KKW_IO_DIR_OUTPUT(1,7);   //设置继电器2的控制为输出
+  ret = RNS110_Reset();
+  LogUart("Reset %d",ret);
+
 #ifdef USE_PRE_IO_PORT 
   //KKW_GPIO_PULL_DN(KKIO_IN_1);    //P1.1
   KKW_GPIO_PULL_DN(KKIO_IN_2);    //P1.2
@@ -686,14 +656,13 @@ void App_Init_Fun(void)
   KKW_GPIO_OUTPUT(KKIO_OUT_6,0);   //P2.2
   KKW_GPIO_OUTPUT(KKIO_OUT_7,0);   //P2.3
 #endif
-  kkw_beep(1,0);
 }
 
 void Delayms(int xms)   //i=xms 
 {
- int i,j;
- for(i=xms;i>0;i--)
-   for(j=587;j>0;j--);    //j=587
+  int i,j;
+  for(i=xms;i>0;i--)
+    for(j=587;j>0;j--);    //j=587
 }
 
 static int find_bit(unsigned int value)
@@ -1090,24 +1059,34 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
     {
       //向NFC写入数据的指令
       RNS110_Write(command->controlmsg,command->length);
+      LogUart("NFC Data %d",command->length);
     }
     break;
   case KKW_CMD_NFC_VEN:
     if(command->length > 0){
       BYTE flag = command->controlmsg[0];
       RNS110_SetPower(flag);
+      LogUart("NFC Ven %d",command->length);
     }
     break;
   case KKW_CMD_NFC_UPGRADE:
     if(command->length > 0){
       BYTE flag = command->controlmsg[0];
       RNS110_SetUpgrade(flag);
+      LogUart("Upgeade");
+    }
+    break;
+  case KKW_CMD_NFC_RESET:
+    {
+      int ret = RNS110_Reset();
+      LogUart("NFC Reset %d,r=%d",command->length,ret);
     }
     break;
   case KKW_CMD_DOOR_CTRL:
     if(command->length > 2){
       uint8 door = command->controlmsg[0];
       uint8 flag = command->controlmsg[1];
+      LogUart("Door control %d,%d",door,flag);
       if(door == 0)
         P1_6 = flag;
       else
@@ -1115,6 +1094,7 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
     }
     break;
   default:
+    //LogUart("Unknown cmd =0x%.4X,%d",cmd,command->length);
     Set_IO(cmd,(uint8)command->controlmsg[0]);
     break;
   }
