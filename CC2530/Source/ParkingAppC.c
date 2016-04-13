@@ -615,8 +615,6 @@ void App_Init_Fun(void)
 {
   int ret = 0;
   
-  KKW_IO_DIR_OUTPUT(1,6);   //设置继电器1的控制为输出
-  KKW_IO_DIR_OUTPUT(1,7);   //设置继电器2的控制为输出
   //ReportDeviceDiscovery();
   kkw_beep(1,0);
   Init_I2C();
@@ -676,6 +674,9 @@ void App_Init_Fun(void)
   KKW_GPIO_OUTPUT(KKIO_OUT_6,0);   //P2.2
   KKW_GPIO_OUTPUT(KKIO_OUT_7,0);   //P2.3
 #endif
+   KKW_IO_OUTPUT(1,6,1);  //设置继电器1的控制为输出
+   KKW_IO_OUTPUT(1,7,1);  //设置继电器2的控制为输出
+
   SET_MAIN_CLOCK(0);
   Init_Watchdog();
   FeetDog();
@@ -1114,7 +1115,7 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
     }
     break;
   case KKW_CMD_DOOR_CTRL:
-    if(command->length > 2){
+    if(command->length >= 2){
       uint8 door = command->controlmsg[0];
       uint8 flag = command->controlmsg[1];
       //LogUart("Door control %d,%d",door,flag);
@@ -1209,31 +1210,31 @@ void Set_IO(uint16 option,uint8 flag)
   if(idx == 0){
     //必须一一列出，因为使用的是宏定义，不可以用函数变量替代
     switch(port){
-    case 0: KKW_IO_SET(0,0,flag);break;
-    case 1: KKW_IO_SET(0,1,flag);break;
-    case 2: KKW_IO_SET(0,2,flag);break;
-    case 3: KKW_IO_SET(0,3,flag);break;
-    case 4: KKW_IO_SET(0,4,flag);break;
-    case 5: KKW_IO_SET(0,5,flag);break;
-    case 6: KKW_IO_SET(0,6,flag);break;
-    case 7: KKW_IO_SET(0,7,flag);break;
+    case 0: KKW_IO_OUTPUT(0,0,flag);break;
+    case 1: KKW_IO_OUTPUT(0,1,flag);break;
+    case 2: KKW_IO_OUTPUT(0,2,flag);break;
+    case 3: KKW_IO_OUTPUT(0,3,flag);break;
+    case 4: KKW_IO_OUTPUT(0,4,flag);break;
+    case 5: KKW_IO_OUTPUT(0,5,flag);break;
+    case 6: KKW_IO_OUTPUT(0,6,flag);break;
+    case 7: KKW_IO_OUTPUT(0,7,flag);break;
     }
   }else if(idx == 1){
     switch(port){
-    case 0: KKW_IO_SET(1,0,flag);break;
-    case 1: KKW_IO_SET(1,1,flag);break;
-    case 2: KKW_IO_SET(1,2,flag);break;
-    case 3: KKW_IO_SET(1,3,flag);break;
-    case 4: KKW_IO_SET(1,4,flag);break;
-    case 5: KKW_IO_SET(1,5,flag);break;
-    case 6: KKW_IO_SET(1,6,flag);break;
-    case 7: KKW_IO_SET(1,7,flag);break;
+    case 0: KKW_IO_OUTPUT(1,0,flag);break;
+    case 1: KKW_IO_OUTPUT(1,1,flag);break;
+    case 2: KKW_IO_OUTPUT(1,2,flag);break;
+    case 3: KKW_IO_OUTPUT(1,3,flag);break;
+    case 4: KKW_IO_OUTPUT(1,4,flag);break;
+    case 5: KKW_IO_OUTPUT(1,5,flag);break;
+    case 6: KKW_IO_OUTPUT(1,6,flag);break;
+    case 7: KKW_IO_OUTPUT(1,7,flag);break;
     }
   }else if(idx == 2){
     switch(port){
-    case 0: KKW_IO_SET(2,0,flag);break;
-    case 1: KKW_IO_SET(2,1,flag);break;
-    case 2: KKW_IO_SET(2,2,flag);break;
+    case 0: KKW_IO_OUTPUT(2,0,flag);break;
+    case 1: KKW_IO_OUTPUT(2,1,flag);break;
+    case 2: KKW_IO_OUTPUT(2,2,flag);break;
     }
   }else if(idx >= 0x20 && idx <= 0x27){
     KKW_I2CIO_SetValue(idx,flag<<port,1<<port);
