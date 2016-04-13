@@ -103,3 +103,14 @@ int RNS110_Reset(void)
   return ret;
 }
 
+int RNS110_Write_cmd1(void)
+{
+  int ret;
+  char cmd[] = { 0x20, 0x00, 0x01, 0x01 };
+  int count = sizeof(cmd);
+
+  ret = RNS110_Write(cmd,count); 
+  return ret;
+}
+
+

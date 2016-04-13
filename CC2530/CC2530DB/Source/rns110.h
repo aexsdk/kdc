@@ -18,5 +18,6 @@ BYTE RNS110_Read(char *buf,uint maxsize);      //单个读取内部寄存器数据
 void RNS110_SetPower(BYTE onoff);
 void RNS110_SetUpgrade(BYTE onoff);
 int RNS110_Reset(void);
+int RNS110_Write_cmd1(void);
 
 #endif /* _RNS110_H */ 
