@@ -47,6 +47,8 @@
 #include "tca9535.h"
 #include "i2c.h"
 #include "rns110.h"
+#include "watchdog.h"
+
 /*********************************************************************
  * MACROS
  */
@@ -161,34 +163,6 @@ void kkw_stop_beep_timeout(void);
 void TCA9535_ISR(void);
 void RNS110_ISR(void);
 void LogUart(char *fmt,...);
-
-void Init_Watchdog(void);
-void SET_MAIN_CLOCK(int source);
-void FeetDog(void);
-
-void Init_Watchdog(void) 
-{ 
-  WDCTL = 0x00;
-  //时间间隔一秒，看门狗模式
-  WDCTL |= 0x08;	//启动看门狗
-}
-
-void SET_MAIN_CLOCK(int source)
-{
-  if(source){
-    CLKCONCMD |= 0x40;/*RC*/
-    while(!(CLKCONSTA&0X40));/*待稳*/
-  }else{
-    CLKCONCMD&=~0x47;/*晶振*/
-    while((CLKCONSTA&0X40));/*待稳*/
-  }
-}
-
-void FeetDog(void)
-{
-  WDCTL = 0xA0 |(WDCTL&0x0F);
-  WDCTL = 0x50 |(WDCTL&0x0F);
-}
 
 /*********************************************************************
  * NETWORK LAYER CALLBACKS
@@ -1112,8 +1086,11 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
   case KKW_CMD_NFC_WRITE:
     {
       //向NFC写入数据的指令
-      LogUart("NFC Write %d\n",command->length);
+      FeetDog();
+      LogUart("NFC Write\n");
+      FeetDog();
       RNS110_Write(command->controlmsg,command->length);
+      FeetDog();
     }
     break;
   case KKW_CMD_NFC_VEN:

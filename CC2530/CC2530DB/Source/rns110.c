@@ -2,8 +2,7 @@
 #include "i2c.h"
 #include "RNS110.h"
 #include "kkwAppHw.h"
-
-extern void FeetDog(void);
+#include "watchdog.h"
 
 void Init_RNS110()
 {

@@ -6455,6 +6455,12 @@
     <file>
       <name>$PROJ_DIR$\Source\tca9535.h</name>
     </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\watchdog.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\watchdog.h</name>
+    </file>
   </group>
   <group>
     <name>HAL</name>
