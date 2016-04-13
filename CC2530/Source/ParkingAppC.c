@@ -1058,8 +1058,8 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
   case KKW_CMD_NFC_WRITE:
     {
       //向NFC写入数据的指令
-      RNS110_Write(command->controlmsg,command->length);
       LogUart("NFC Data %d",command->length);
+      RNS110_Write(command->controlmsg,command->length);
     }
     break;
   case KKW_CMD_NFC_VEN:
