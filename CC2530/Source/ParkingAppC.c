@@ -571,18 +571,20 @@ void ParkingApp_MessageMSGCB( afIncomingMSGPacket_t *pkt )
   FeetDog();
 }
 
+static char log_uart_buf[256];
 void LogUart(char *fmt,...)
 {
-  char buf[256];
   va_list args;
   
   FeetDog();
-  memset(buf,0,sizeof(buf));
+  memset(log_uart_buf,0,sizeof(log_uart_buf));
+  
   va_start(args, fmt);
-  vsprintf(buf, fmt, args);
+  vsprintf(log_uart_buf, fmt, args);
   va_end(args);
+  
   FeetDog();
-  App_SendSample((unsigned char*)buf, strlen((char *)buf), KKW_EVT_LOG);     
+  App_SendSample((unsigned char*)log_uart_buf, strlen((char *)log_uart_buf), KKW_EVT_LOG);     
 }
 
 //报告设备发现命令，如果是协调器则会直接通过串口上报，如果是终端设备则通过传感网
@@ -1088,7 +1090,7 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
     {
       //向NFC写入数据的指令
       FeetDog();
-      LogUart("NFC Write\n");
+      LogUart("NFC Write");
       FeetDog();
       RNS110_Write(command->controlmsg,command->length);
       FeetDog();
@@ -1329,6 +1331,9 @@ void SerialApp_Send(uint8 port,unsigned char *buf, unsigned char len)
   
   App_SendSample(buf, len, option);  
 }
+
+//定义在函数外主要是避免堆栈溢出
+static  unsigned char rxbuf[(CMD_MAX_LEN+sizeof(cmd_msg_t))+1];
 /*********************************************************************
  * @fn      SerialApp_Send
  *
@@ -1346,7 +1351,6 @@ void SerialApp_Cmd(uint8 port,unsigned char *buf, uint8 len)
   //uint8 Temp_SerialApp_TxBuf[85];
   uint8 buf_len = 0;
   unsigned char *p = buf;
-  unsigned char rxbuf[(CMD_MAX_LEN+sizeof(cmd_msg_t))+1];
   cmd_msg_t *cmd_msg = (cmd_msg_t *)p;
 
   // start with 0xFB
