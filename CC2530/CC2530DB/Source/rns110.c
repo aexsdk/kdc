@@ -3,6 +3,8 @@
 #include "RNS110.h"
 #include "kkwAppHw.h"
 
+extern void FeetDog(void);
+
 void Init_RNS110()
 {
   //must ececute Init_I2C first
@@ -27,6 +29,7 @@ int RNS110_Write(char *buf,uint count)       //单个写入数据
   I2C_Start();                  //起始信号
   I2C_SendByte(IO_SA_WRITE(RNS110_IC_SlaveAddress));   //发送设备地址+写信号
   for(i=0;i<count;i++){
+    FeetDog();
     r = I2C_SendByte(buf[i]);
     if(r == 0){
       I2C_Stop();
@@ -53,6 +56,7 @@ BYTE RNS110_Read(char *buf,uint maxsize)      //单个读取内部寄存器数据
   }
   len = I2C_RecvByte();     //The first byte is packet len
   for(i = 0; i < len; i++){
+    FeetDog();
     r = I2C_RecvByte();
     buf[i++] = r;
   }
