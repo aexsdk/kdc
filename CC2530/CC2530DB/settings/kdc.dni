@@ -1,5 +1,5 @@
 [DebugChecksum]
-Checksum=-491039975
+Checksum=681866092
 [BreakpointUsageDialog]
 Placement=_ 502 304 939 575
 [StackPlugin]
@@ -13,7 +13,8 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DisAssemblyWindow]
-NumStates=_ 0
+NumStates=_ 1
+State 1=_ 1
 [InstructionProfiling]
 Enabled=_ 0
 [CodeCoverage]

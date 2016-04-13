@@ -195,7 +195,7 @@ typedef struct {
 #define KKWAPP_DOG_TIMER                0x2000
 
 #define KKWAPP_HEART_TIMEOUT            10000
-#define KKWAPP_DOG_TIMEOUT              700
+#define KKWAPP_DOG_TIMEOUT              500
 #define KKWAPP_TEMP_DEFAULT_TIMEOUT     3000      //默认每3秒检测一次
 #define KKWAPP_HUMI_DEFAULT_TIMEOUT     3000      //默认每3秒检测一次
 #define KKWAPP_POSITION_DEFAULT_TIMEOUT 3000      //默认每0.5秒检测一次
