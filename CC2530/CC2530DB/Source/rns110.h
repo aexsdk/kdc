@@ -12,6 +12,7 @@ typedef unsigned long   uint32;
 
 #define	RNS110_IC_SlaveAddress           0x28	            
 
+int RNS110_Get_Can_Read(void);
 void Init_RNS110(void);
 int  RNS110_Write(char *buf,uint count);       //单个写入数据
 BYTE RNS110_Read(char *buf,uint maxsize);      //单个读取内部寄存器数据

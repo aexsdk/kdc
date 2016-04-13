@@ -10,9 +10,9 @@
 
 void Init_Watchdog(void) 
 { 
-  //WDCTL = 0x00;
+  WDCTL = 0x00;
   //时间间隔一秒，看门狗模式
-  //WDCTL |= 0x08;	//启动看门狗
+  WDCTL |= 0x08;	//启动看门狗
 }
 
 void SET_MAIN_CLOCK(int source)

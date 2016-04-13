@@ -4,6 +4,13 @@
 #include "kkwAppHw.h"
 #include "watchdog.h"
 
+static int RNS110_CAN_ISR_READ = 0;
+
+int RNS110_Get_Can_Read(void)
+{
+  return RNS110_CAN_ISR_READ;
+}
+
 void Init_RNS110()
 {
   //must ececute Init_I2C first
@@ -13,8 +20,8 @@ void Init_RNS110()
   //Set IRQ
   KKW_IO_INPUT_PREP(0,6,KKW_IO_PULLUP);  //Set p0.6 is a int & pull down active
   P0IEN |= BV(6);       //P0.6可以产生中断
-  PICTL |= BV(0);      //端口0 0-7下降沿引起中断
-  //PICTL &= ~BV(0);     //端口0 0-7上升沿引起中断
+  //PICTL |= BV(0);      //端口0 0-7下降沿引起中断
+  PICTL &= ~BV(0);     //端口0 0-7上升沿引起中断
   IEN1 |= BV(5);
   P0IFG &= BV(6);
   EA = 1;
@@ -40,13 +47,15 @@ int RNS110_Write(char *buf,uint count)       //单个写入数据
   return r;
 }
 
+extern void LogUart(char *fmt,...);
+
 BYTE RNS110_Read(char *buf,uint maxsize)      //单个读取内部寄存器数据
 {
   BYTE i = 0;
   BYTE len = 0;
   BYTE r = 0;
-    
   BYTE ret = 0;
+  
   I2C_Start();                                            //起始信号
   ret = I2C_SendByte(IO_SA_WRITE(RNS110_IC_SlaveAddress));           //发送设备地址+写信号
   if(ret == 0){
@@ -54,6 +63,9 @@ BYTE RNS110_Read(char *buf,uint maxsize)      //单个读取内部寄存器数据
     return 0;
   }
   len = I2C_RecvByte();     //The first byte is packet len
+  if(len > maxsize){
+    len = maxsize;
+  }
   for(i = 0; i < len; i++){
     FeetDog();
     r = I2C_RecvByte();
@@ -102,6 +114,9 @@ int RNS110_Reset(void)
     I2C_delay(100);
     ret = RNS110_Write(rset_cmd,count);
     ret += 10;
+  }
+  if(ret > 0){
+    RNS110_CAN_ISR_READ = 1;
   }
   return ret;
 }

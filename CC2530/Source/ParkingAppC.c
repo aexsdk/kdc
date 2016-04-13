@@ -398,7 +398,7 @@ uint16 ParkingApp_ProcessEvent( uint8 task_id, uint16 events )
 #ifdef KKW_HAL_TEMP  
   if ( (events & KKWAPP_START_TEMP_EVT) == KKWAPP_START_TEMP_EVT){
     Process_Read_Temp();
-    FeetDog();
+    Feetg();
     return (events ^ KKWAPP_START_TEMP_EVT);
   }
 #endif
@@ -417,7 +417,7 @@ uint16 ParkingApp_ProcessEvent( uint8 task_id, uint16 events )
   if( (events & KKWAPP_HEART_TIMER) == KKWAPP_HEART_TIMER ){
     uint16 v = KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF);
 
-    //LogUart("Heart");
+    LogUart("Heart");
     FeetDog();
     osal_start_timerEx(ParkingApp_TaskID,KKWAPP_HEART_TIMER,KKWAPP_HEART_TIMEOUT);
     return (events ^ KKWAPP_HEART_TIMER);
@@ -571,7 +571,7 @@ void ParkingApp_MessageMSGCB( afIncomingMSGPacket_t *pkt )
   FeetDog();
 }
 
-static char log_uart_buf[256];
+static char log_uart_buf[128];
 void LogUart(char *fmt,...)
 {
   va_list args;
@@ -584,7 +584,7 @@ void LogUart(char *fmt,...)
   va_end(args);
   
   FeetDog();
-  App_SendSample((unsigned char*)log_uart_buf, strlen((char *)log_uart_buf), KKW_EVT_LOG);     
+  App_SendSample((unsigned char*)log_uart_buf, strlen((char *)log_uart_buf)+1, KKW_EVT_LOG);     
 }
 
 //报告设备发现命令，如果是协调器则会直接通过串口上报，如果是终端设备则通过传感网
@@ -621,7 +621,7 @@ void App_Init_Fun(void)
   kkw_beep(1,0);
   Init_I2C();
 #ifdef KKW_USE_TCA9535
-  Init_TCA9535();
+  //Init_TCA9535();
 #endif
 #ifdef KKW_USE_POSITION
   Init_PCF8574();
@@ -707,12 +707,19 @@ static int find_bit(unsigned int value)
   return -1;
 }
 
+char rns110_isr_read_buf[32];
 void RNS110_ISR(void)
 {
-  char buf[256];
   //从NFC读取数据的指令
-  BYTE len = RNS110_Read(buf,sizeof(buf));
-  App_SendSample(buf,len,KKW_EVT_NFC_READ);
+  if(RNS110_Get_Can_Read()){
+    BYTE len;
+    
+    memset(rns110_isr_read_buf,0,sizeof(rns110_isr_read_buf));
+    //LogUart("RSN110 Will Read");
+    len = RNS110_Read(rns110_isr_read_buf,sizeof(rns110_isr_read_buf));
+    //LogUart("RSN110 Read %d bytes",len);
+    App_SendSample(rns110_isr_read_buf,len,KKW_EVT_NFC_READ);
+  }
 }
 
 void TCA9535_ISR(void)
@@ -806,7 +813,8 @@ HAL_ISR_FUNCTION( halKeyPort0Isr, P0INT_VECTOR )
   }
   if((P0IFG & 0x40) == 0x40) //p0.6
   {    
-    //RNS110_ISR();
+    //LogUart("RNS110 ISR");
+    RNS110_ISR();
     P0IFG &= ~0x40;
   }
   /*if((P0IFG & 0x02) == 0x02) //p0.1
@@ -1080,19 +1088,28 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
     break;
   case KKW_CMD_NFC_READ:
     {
+      /*
       char buf[256];
       //从NFC读取数据的指令
-      //BYTE len = RNS110_Read(buf,sizeof(buf));
+      BYTE len = RNS110_Read(buf,sizeof(buf));
       App_SendSample(buf,len,KKW_EVT_NFC_READ);
+      */
+      RNS110_ISR();
     }
     break;
   case KKW_CMD_NFC_WRITE:
     {
+      int i;
       //向NFC写入数据的指令
       FeetDog();
-      LogUart("NFC Write");
-      FeetDog();
-      RNS110_Write(command->controlmsg,command->length);
+      /*for(i=0;i<command->length;i++){
+        FeetDog();
+        LogUart("Write 0x%.2X",command->controlmsg[i]);
+        Delayms(20);
+      }*/
+      RNS110_Write_cmd1();
+      //RNS110_Write(command->controlmsg,command->length);
+      LogUart("RNS110 Write %d bytes",command->length);
       FeetDog();
     }
     break;
