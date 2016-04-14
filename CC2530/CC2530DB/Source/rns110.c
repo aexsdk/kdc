@@ -121,6 +121,12 @@ int RNS110_Reset(void)
   return ret;
 }
 
+int RNS110_Get_INT_Status(int d)
+{
+  I2C_Delayus(d);
+  return RNS110_IO_INT == 1;    //上升沿触发中断，防抖动
+}
+
 int RNS110_Write_cmd1(void)
 {
   int ret;

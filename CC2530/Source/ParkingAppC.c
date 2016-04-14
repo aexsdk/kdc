@@ -711,7 +711,7 @@ char rns110_isr_read_buf[32];
 void RNS110_ISR(void)
 {
   //从NFC读取数据的指令
-  if(RNS110_Get_Can_Read()){
+  if(RNS110_Get_Can_Read() && RNS110_Get_INT_Status(10000)){
     BYTE len;
     
     memset(rns110_isr_read_buf,0,sizeof(rns110_isr_read_buf));

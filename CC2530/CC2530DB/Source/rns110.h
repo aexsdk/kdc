@@ -1,6 +1,8 @@
 #ifndef _RNS110_H
 #define _RNS110_H
 
+#include "i2c.h"
+
 #define   uchar unsigned char
 #define   uint  unsigned int
 typedef unsigned char BYTE;
@@ -20,5 +22,6 @@ void RNS110_SetPower(BYTE onoff);
 void RNS110_SetUpgrade(BYTE onoff);
 int RNS110_Reset(void);
 int RNS110_Write_cmd1(void);
+int RNS110_Get_INT_Status(int d);
 
 #endif /* _RNS110_H */ 
