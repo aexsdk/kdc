@@ -4,11 +4,11 @@
 #include "kkwAppHw.h"
 #include "watchdog.h"
 
-static int RNS110_CAN_ISR_READ = 0;
+static uint readLen = 0;
 
 int RNS110_Get_Can_Read(void)
 {
-  return RNS110_CAN_ISR_READ;
+  return readLen;
 }
 
 void Init_RNS110()
@@ -18,13 +18,27 @@ void Init_RNS110()
   KKW_IO_DIR_OUTPUT(1,3);   //Set rns n110 UPGRADE port to output
   KKW_IO_DIR_OUTPUT(0,7);   //Set rns n110 VEN port to output
   //Set IRQ
-  KKW_IO_INPUT_PREP(0,6,KKW_IO_PULLUP);  //Set p0.6 is a int & pull down active
+  KKW_IO_INPUT_PREP(0,6,KKW_IO_PULLDOWN);  //Set p0.6 is a int & pull down active
+  RNS110_Enable_irq();
+}
+
+void RNS110_Enable_irq(void)
+{
   P0IEN |= BV(6);       //P0.6可以产生中断
   //PICTL |= BV(0);      //端口0 0-7下降沿引起中断
   PICTL &= ~BV(0);     //端口0 0-7上升沿引起中断
   IEN1 |= BV(5);
   P0IFG &= BV(6);
   EA = 1;
+}
+
+void RNS110_Disable_irq(void)
+{
+  P0IEN &= ~BV(6);       //P0.6可以产生中断
+  //PICTL |= BV(0);      //端口0 0-7下降沿引起中断
+  PICTL &= ~BV(0);     //端口0 0-7上升沿引起中断
+  IEN1 &= ~BV(5);
+  P0IFG |= ~BV(6);
 }
 
 int RNS110_Write(char *buf,uint count)       //单个写入数据
@@ -47,41 +61,64 @@ int RNS110_Write(char *buf,uint count)       //单个写入数据
   return r;
 }
 
-extern void LogUart(char *fmt,...);
-
-BYTE RNS110_Read(char *buf,uint maxsize)      //单个读取内部寄存器数据
+BYTE RNS110_Read(char *buf,uint8 len)      //单个读取内部寄存器数据
 {
   BYTE i = 0;
-  BYTE len = 0;
   BYTE r = 0;
   BYTE ret = 0;
   
+  if(len == 0)
+    goto FAIL;
   I2C_Start();                                            //起始信号
   ret = I2C_SendByte(IO_SA_WRITE(RNS110_IC_SlaveAddress));           //发送设备地址+写信号
   if(ret == 0){
-    I2C_Stop(); 
-    return 0;
+    I2C_Stop();
+    goto FAIL;
   }
-  len = I2C_RecvByte();     //The first byte is packet len
-  if(len > maxsize){
-    len = maxsize;
-  }
-  for(i = 0; i < len; i++){
+  for(i = 0; i < len - 1; i++){
     FeetDog();
-    r = I2C_RecvByte();
+    r = I2C_RecvByte(0);
     buf[i++] = r;
   }
+  buf[len-1] = I2C_RecvByte(1);
   I2C_Stop();                                   //停止信号
   I2C_delay(100);
+  
+FAIL:
+  RNS110_Disable_irq();
   return len;
 }
 
 void RNS110_SetPower(BYTE onoff)
 {
-  if(onoff >1){
-    RNS110_Reset();
-  }else{
-    RNS110_IO_VEN = !!onoff;
+  switch(onoff)
+  {
+  case 0:
+    {
+      RNS110_IO_UPGRADE = 0;
+      RNS110_IO_VEN = 0;
+      break;
+    }
+  case 1:
+    {
+      RNS110_IO_UPGRADE = 0;
+      I2C_delay(100);
+      RNS110_IO_VEN = 1;
+      I2C_delay(100);
+      break;
+    }
+  case 2:
+  default:
+    {
+      RNS110_IO_UPGRADE = 1;
+      RNS110_IO_VEN = 1;
+      I2C_delay(100);
+      RNS110_IO_VEN = 0;
+      I2C_delay(100);
+      RNS110_IO_VEN = 1;
+      I2C_delay(100);
+      break;
+    }
   }
 }
 
@@ -114,9 +151,6 @@ int RNS110_Reset(void)
     I2C_delay(100);
     ret = RNS110_Write(rset_cmd,count);
     ret += 10;
-  }
-  if(ret > 0){
-    RNS110_CAN_ISR_READ = 1;
   }
   return ret;
 }

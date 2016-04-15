@@ -16,8 +16,10 @@ typedef unsigned long   uint32;
 
 int RNS110_Get_Can_Read(void);
 void Init_RNS110(void);
+void RNS110_Enable_irq(void);
+void RNS110_Disable_irq(void);
 int  RNS110_Write(char *buf,uint count);       //单个写入数据
-BYTE RNS110_Read(char *buf,uint maxsize);      //单个读取内部寄存器数据
+BYTE RNS110_Read(char *buf,BYTE len);
 void RNS110_SetPower(BYTE onoff);
 void RNS110_SetUpgrade(BYTE onoff);
 int RNS110_Reset(void);

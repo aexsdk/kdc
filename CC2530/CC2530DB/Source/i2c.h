@@ -32,6 +32,6 @@ void I2C_Stop(void);
 void I2C_SendACK(char ack);
 char I2C_RecvACK(void);
 BYTE I2C_SendByte(BYTE dat);
-BYTE I2C_RecvByte(void);
+BYTE I2C_RecvByte(BYTE ack);
 
 #endif /* _I2C_H */ 

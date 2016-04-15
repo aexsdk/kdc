@@ -8,8 +8,12 @@
 #include "AF.h"
 #include "aps_groups.h"
 #include "ZDApp.h"
- #include "ZComDef.h"
+#include "ZComDef.h"
 
+
+#define TRUE	1
+#define FALSE	0
+bool I2CErr = FALSE;
 
 /**************************************
 延时1微秒
@@ -129,21 +133,29 @@ void I2C_SendACK(char ack)
 
 char I2C_RecvACK()
 {
-    IO_SCL = 0;
-    I2C_Delayus(5);
-    I2C_IO_SDADirOut();
-    IO_SDA = 1;
-    I2C_IO_SDADirIn();
-    I2C_Delayus(5);          //此处是否有必要使SDA先拉高？！？！
-    IO_SCL = 1;
-    I2C_Delayus(5);
-    if(IO_SDA == 1)
+  uint8 times=255;			//避免故障，设定错误次数
+
+  IO_SCL = 0;
+  I2C_Delayus(5);
+  I2C_IO_SDADirOut();
+  IO_SDA = 1;
+  I2C_IO_SDADirIn();
+  I2C_Delayus(5);          //此处是否有必要使SDA先拉高？！？！
+  IO_SCL = 1;
+  I2C_Delayus(5);
+  while(IO_SDA)
+  { 
+    times--;
+    if(!times)				//超时值为255
     {
-      IO_SCL = 0;
-      return 0;  //er
+      I2C_Stop();
+      I2CErr=TRUE;			
+      return FALSE;
     }
-    IO_SCL = 0;
-    return 1;
+  }
+  IO_SCL = 0; 
+  I2CErr = FALSE;
+  return TRUE;
 }
 
 /**************************************
@@ -175,7 +187,7 @@ BYTE I2C_SendByte(BYTE dat)
 /**************************************
 从IIC总线接收一个字节数据
 **************************************/
-BYTE I2C_RecvByte()
+BYTE I2C_RecvByte(BYTE ack)
 {
     BYTE i;
     BYTE dat = 0;
@@ -194,6 +206,7 @@ BYTE I2C_RecvByte()
         IO_SCL = 0;                //拉低时钟线
         I2C_Delayus(5);             //延时
     }
+    I2C_SendACK(!!ack);
     return dat;
 }
 
