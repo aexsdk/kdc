@@ -163,7 +163,8 @@ void kkw_stop_beep_timeout(void);
 void TCA9535_ISR(void);
 void RNS110_ISR(void);
 void LogUart(char *fmt,...);
-
+int RNS110_Run_Read(int len);
+int RNS110_Test(char *msg);
 /*********************************************************************
  * NETWORK LAYER CALLBACKS
  */
@@ -629,7 +630,7 @@ void App_Init_Fun(void)
   Init_RNS110();
   ret = RNS110_Reset();
   LogUart("Reset %d",ret);
-  ret = RNS110_Write_cmd1();
+  ret = RNS110_Test("\0x00\0x00\0x00\0x00");
   //LogUart("Write %d bytes",ret);
 
 #ifdef USE_PRE_IO_PORT 
@@ -1104,13 +1105,7 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
         if(len == 0){
           RNS110_Enable_irq();
         }else{
-          char buf[CMD_MAX_LEN];
-          
-          //LogUart("RNS110 will read %d bytes",len);
-          //Delayms(50);
-          len = RNS110_Read(buf,len);
-          App_SendSample(buf,len,KKW_EVT_NFC_READ);
-          RNS110_Enable_irq();
+          RNS110_Run_Read(len);
         }
       }
     }
@@ -1127,34 +1122,39 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
     }
     break;
   case KKW_CMD_NFC_VEN:
-    if(command->length > 0){
+    /*if(command->length > 0){
       BYTE flag = command->controlmsg[0];
       RNS110_SetPower(flag);
-      //LogUart("NFC Ven %d",command->length);
-    }
+      LogUart("NFC Ven %d",command->length);
+    }*/
     break;
   case KKW_CMD_NFC_UPGRADE:
-    if(command->length > 0){
+    /*if(command->length > 0){
       BYTE flag = command->controlmsg[0];
       RNS110_SetUpgrade(flag);
-      //LogUart("Upgeade");
-    }
+      LogUart("Upgeade");
+    }*/
     break;
   case KKW_CMD_NFC_RESET:
     {
       int ret = RNS110_Reset();
-      //LogUart("NFC Reset %d,r=%d",command->length,ret);
+      LogUart("NFC Reset %d,r=%d",command->length,ret);
     }
     break;
   case KKW_CMD_DOOR_CTRL:
     if(command->length >= 2){
       uint8 door = command->controlmsg[0];
       uint8 flag = command->controlmsg[1];
-      //LogUart("Door control %d,%d",door,flag);
+      LogUart("Door control %d,%d",door,flag);
       if(door == 0)
         P1_6 = flag;
       else
         P1_7 = flag;
+    }
+    break;
+  case KKW_CMD_NFC_TEST:
+    {
+      RNS110_Test(command->controlmsg);
     }
     break;
   default:
@@ -1163,6 +1163,61 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
     break;
   }
   FeetDog();
+}
+
+int RNS110_Run_Read(int len)
+{
+  char *buf;
+  
+  RNS110_Disable_irq();
+  if(len > 96){
+    len = 96;
+  }
+  LogUart("RNS110 will read %d bytes",len);
+  Delayms(50);
+  buf = osal_mem_alloc(CMD_MAX_LEN);
+  if(buf != NULL){
+    memset(buf,0,CMD_MAX_LEN);
+    len = RNS110_Read(buf,len);
+    App_SendSample(buf,len,KKW_EVT_NFC_READ);
+    osal_mem_free(buf);
+  }
+  RNS110_Enable_irq();
+}
+
+int RNS110_Test(char *msg)
+{
+  int ret;
+  char buf[20];
+  #ifdef KDC_DEBUG
+  LogUart("RNS110 Test 0x%.2X%.2X%.2X%.2X",msg[0],msg[1],msg[2],msg[3]);
+  #endif
+  switch(msg[0])
+  {
+  case 0:
+    break;
+  default:
+    {
+      RNS110_SetPower(1);
+      I2C_delay(100);
+      RNS110_SetPower(0);
+      I2C_delay(100);
+      RNS110_SetPower(1);
+      buf[0] = 0x20;
+      buf[1] = 0x00;
+      buf[2] = 0x01;
+      buf[3] = 0x01;
+      RNS110_Write(buf,4);
+      RNS110_Run_Read(3);
+      buf[0] = 0x20;
+      buf[1] = 0x01;
+      buf[2] = 0x00;
+      RNS110_Write(buf,3);
+      RNS110_Run_Read(3);
+      RNS110_Run_Read(23);
+    }
+    break;
+  }
 }
 
 //设置预设的8个输出口OUT高电平

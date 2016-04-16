@@ -45,6 +45,8 @@ extern "C"
 {
 #endif
 
+#define KDC_DEBUG
+  
 /*********************************************************************
  * INCLUDES
  */
@@ -165,6 +167,7 @@ typedef struct {
 #define KKW_CMD_NFC_UPGRADE             0xD012      //控制N110的UPGRADE的命令
 #define KKW_CMD_NFC_RESET               0xD013      //NFC复位指令
 #define KKW_CMD_DOOR_CTRL               0xD021      //控制门的的命令
+#define KKW_CMD_NFC_TEST                0xD022      
 
 #define KKW_EVT_IN_MIN                  0xC000      //协调器和终端报告IO状态的事件最小值      
 #define KKW_EVT_IN_MAX                  0xCFFF      //协调器和终端报告IO状态的事件的最大值

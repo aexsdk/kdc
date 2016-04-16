@@ -95,6 +95,7 @@ BYTE RNS110_Read(char *buf,uint8 len)      //单个读取内部寄存器数据
     r = I2C_RecvByte(0);
     buf[i++] = r;
   }
+  FeetDog();
   buf[len-1] = I2C_RecvByte(1);
   I2C_Stop();                                   //停止信号
   I2C_delay(100);
