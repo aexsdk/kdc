@@ -629,6 +629,8 @@ void App_Init_Fun(void)
   Init_RNS110();
   ret = RNS110_Reset();
   LogUart("Reset %d",ret);
+  ret = RNS110_Write_cmd1();
+  //LogUart("Write %d bytes",ret);
 
 #ifdef USE_PRE_IO_PORT 
   //KKW_GPIO_PULL_DN(KKIO_IN_1);    //P1.1
@@ -714,7 +716,7 @@ void RNS110_ISR(void)
     BYTE len;
     
     RNS110_Disable_irq();
-    LogUart("RNS110_ISR");
+    //LogUart("RNS110_ISR");
     Delayms(50);
     char buf[] = {0xFF,0xFF,0xFF};
     App_SendSample(buf,sizeof(buf),KKW_EVT_NFC_HAVEDATA);
