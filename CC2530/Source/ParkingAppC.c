@@ -621,7 +621,7 @@ void App_Init_Fun(void)
   kkw_beep(1,0);
   Init_I2C();
 #ifdef KKW_USE_TCA9535
-  //Init_TCA9535();
+  Init_TCA9535();
 #endif
 #ifdef KKW_USE_POSITION
   Init_PCF8574();
@@ -715,10 +715,10 @@ void RNS110_ISR(void)
   if(RNS110_Get_INT_Status(10000)){
     BYTE len;
     
-    RNS110_Disable_irq();
-    //LogUart("RNS110_ISR");
+    //RNS110_Disable_irq();
+    LogUart("RNS110_ISR");
     Delayms(50);
-    char buf[] = {0xFF,0xFF,0xFF};
+    char buf[] = {0xFF,0xFD,0xFF};
     App_SendSample(buf,sizeof(buf),KKW_EVT_NFC_HAVEDATA);
     /*if(len != 0xFF){
       LogUart("RSN110 Read %d bytes",len);
