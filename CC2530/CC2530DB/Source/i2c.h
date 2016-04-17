@@ -21,6 +21,13 @@ typedef unsigned long   uint32;
 
 void I2C_IO_SDADirIn(void);
 void I2C_IO_SDADirOut(void);
+void I2C_IO_SCLDirIn(void);
+void I2C_IO_SCLDirOut(void);
+
+int I2C_SetScl(BYTE v);
+int I2C_GetScl(void);
+int I2C_SetSda(BYTE v);
+int I2C_GetSda(void);
 
 //************
 void I2C_delay(unsigned int k);

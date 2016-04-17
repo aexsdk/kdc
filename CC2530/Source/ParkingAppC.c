@@ -163,7 +163,7 @@ void kkw_stop_beep_timeout(void);
 void TCA9535_ISR(void);
 void RNS110_ISR(void);
 void LogUart(char *fmt,...);
-int RNS110_Run_Read(int len);
+int RNS110_Run_Read(int len,int option);
 int RNS110_Test(char *msg);
 /*********************************************************************
  * NETWORK LAYER CALLBACKS
@@ -1105,7 +1105,9 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
         if(len == 0){
           RNS110_Enable_irq();
         }else{
-          RNS110_Run_Read(len);
+          RNS110_Disable_irq();
+          RNS110_Run_Read(len,KKW_EVT_NFC_READ);
+          RNS110_Enable_irq();
         }
       }
     }
@@ -1165,11 +1167,10 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
   FeetDog();
 }
 
-int RNS110_Run_Read(int len)
+int RNS110_Run_Read(int len,int option)
 {
   char *buf;
   
-  RNS110_Disable_irq();
   if(len > 96){
     len = 96;
   }
@@ -1179,23 +1180,24 @@ int RNS110_Run_Read(int len)
   if(buf != NULL){
     memset(buf,0,CMD_MAX_LEN);
     len = RNS110_Read(buf,len);
-    App_SendSample(buf,len,KKW_EVT_NFC_READ);
+    App_SendSample(buf,len,option);
     osal_mem_free(buf);
   }
-  RNS110_Enable_irq();
+  return len;
 }
 
 int RNS110_Test(char *msg)
 {
   int ret;
   char buf[20];
+  
+  RNS110_Disable_irq();
   #ifdef KDC_DEBUG
   LogUart("RNS110 Test 0x%.2X%.2X%.2X%.2X",msg[0],msg[1],msg[2],msg[3]);
   #endif
   switch(msg[0])
   {
   case 0:
-    break;
   default:
     {
       RNS110_SetPower(1);
@@ -1207,17 +1209,23 @@ int RNS110_Test(char *msg)
       buf[1] = 0x00;
       buf[2] = 0x01;
       buf[3] = 0x01;
-      RNS110_Write(buf,4);
-      RNS110_Run_Read(3);
+      ret = RNS110_Write(buf,4);
+      LogUart("\tRNS110 write %d bytes",ret);
+      ret = RNS110_Run_Read(3,0xBF00);
+      LogUart("\tRNS110 read %d bytes",ret);
       buf[0] = 0x20;
       buf[1] = 0x01;
       buf[2] = 0x00;
-      RNS110_Write(buf,3);
-      RNS110_Run_Read(3);
-      RNS110_Run_Read(23);
+      ret = RNS110_Write(buf,3);
+      LogUart("\tRNS110 write %d bytes",ret);
+      ret = RNS110_Run_Read(3,0xBF00);
+      LogUart("\tRNS110 write %d bytes",ret);
+      ret = RNS110_Run_Read(23,0xBF00);
+      LogUart("\tRNS110 write %d bytes",ret);
     }
     break;
   }
+  RNS110_Enable_irq();
 }
 
 //设置预设的8个输出口OUT高电平
