@@ -68,12 +68,12 @@ int RNS110_Write(char *buf,uint count)       //单个写入数据
     r = I2C_SendByte(buf[i]);
     if(r == 0){
       I2C_Stop();
-      return r;
+      return i+1;
     }
   }
   I2C_Stop();                   //发送停止信号
   I2C_delay(10);
-  return r;
+  return count;
 }
 
 BYTE RNS110_Read(char *buf,uint8 len)      //单个读取内部寄存器数据
@@ -92,11 +92,11 @@ BYTE RNS110_Read(char *buf,uint8 len)      //单个读取内部寄存器数据
   }
   for(i = 0; i < len - 1; i++){
     FeetDog();
-    r = I2C_RecvByte(0);
+    r = I2C_RecvByte(1);
     buf[i++] = r;
   }
   FeetDog();
-  buf[len-1] = I2C_RecvByte(1);
+  buf[len-1] = I2C_RecvByte(0);
   I2C_Stop();                                   //停止信号
   I2C_delay(100);
   
