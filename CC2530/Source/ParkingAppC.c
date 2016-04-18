@@ -627,10 +627,10 @@ void App_Init_Fun(void)
 #ifdef KKW_USE_POSITION
   Init_PCF8574();
 #endif
-  Init_RNS110();
-  ret = RNS110_Reset();
-  LogUart("Reset %d",ret);
-  ret = RNS110_Test("\0x00\0x00\0x00\0x00");
+  //Init_RNS110();
+  //ret = RNS110_Reset();
+  //LogUart("Reset %d",ret);
+  //ret = RNS110_Test("\0x00\0x00\0x00\0x00");
   //LogUart("Write %d bytes",ret);
 
 #ifdef USE_PRE_IO_PORT 

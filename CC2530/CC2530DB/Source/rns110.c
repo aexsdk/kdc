@@ -4,7 +4,7 @@
 #include "kkwAppHw.h"
 #include "watchdog.h"
 
-#define RNS110_P0_6_INT
+//#define RNS110_P0_6_INT
 
 static uint readLen = 0;
 
@@ -33,6 +33,7 @@ void RNS110_Enable_irq(void)
   IEN1 |= BV(5);
   P0IFG &= BV(6);
 #else
+  /*
   //Set IRQ
   KKW_IO_INPUT_PREP(1,5,KKW_IO_PULLDOWN);  //Set p1.5 is a int & pull down active
   P1IEN |= BV(5);       //P1.5可以产生中断
@@ -43,17 +44,20 @@ void RNS110_Enable_irq(void)
    
   IEN2 |= BV(4);         // 允许P1口中断；0x10
   P1IFG &= BV(5);
+  */
 #endif
   EA = 1;
 }
 
 void RNS110_Disable_irq(void)
 {
+  /*
 #ifdef RNS110_P0_6_INT
   P0IEN &= ~BV(6);       //P0.6关闭中断
 #else
   P1IEN &= ~BV(5);       //P1.5关闭中断
 #endif
+  */
 }
 
 int RNS110_Write(char *buf,uint count)       //单个写入数据
