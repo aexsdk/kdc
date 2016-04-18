@@ -36,9 +36,9 @@ BYTE TCA9535_Read_One(uint address,unsigned int command)
     I2C_Stop(); 
     return 0;
   }
-  r = I2C_RecvByte(1);
+  r = I2C_RecvByte(0);
   I2C_Stop();                                   //Í£Ö¹ÐÅºÅ
-  I2C_delay(100);
+  I2C_delay(10);
   return r;
 }
 
