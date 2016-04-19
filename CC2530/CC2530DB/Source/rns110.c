@@ -4,7 +4,7 @@
 #include "kkwAppHw.h"
 #include "watchdog.h"
 
-#define RNS110_P0_6_INT
+//#define RNS110_P0_6_INT
 
 static uint readLen = 0;
 
