@@ -145,6 +145,38 @@ typedef struct {
   } cmdop;*/
 } cmd_msg_t;
 
+#define KKW_USE_PORT0ISR
+#define KKW_USE_TCA9535
+//#define KKW_USE_POSITION
+#define KKW_USE_RNS110
+#define KKW_USE_LEDBLINK
+//define pin 
+#define IO_BEEP_PORT      1
+#define IO_BEEP_PIN       0
+#define IO_BEEP           P1_0          //·äÃùÆ÷
+#define BEEP_ON           0
+#define BEEP_OFF          1
+
+#define IO_RELAY0_PORT    1
+#define IO_RELAY0_PIN     6
+#define IO_RELAY0         P1_6          //¼ÌµçÆ÷0
+#define IO_RELAY1_PORT    1
+#define IO_RELAY1_PIN     7
+#define IO_RELAY1         P1_7          //¼ÌµçÆ÷1
+#define RELAY_ON          1
+#define RELAY_OFF         0
+
+#ifdef KKW_USE_LEDBLINK
+  #define IO_LEDBLINK_PORT        0
+  #define IO_LEDBLINK_PIN         5
+  #define IO_LEDBLINK             P0_5    //Ö¸Ê¾µÆÉÁË¸
+  #define LEDBLINK_ON             1
+  #define LEDBLINK_OFF            0
+
+#endif
+
+//end
+
 #define CMD_RSSI_OFFSET     13
 
 /*

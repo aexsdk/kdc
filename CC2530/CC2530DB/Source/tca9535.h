@@ -18,5 +18,6 @@ void TCA9535_ClrISR(void);
 void TCA9535_Write(uint address,uchar REG_data);               //单个写入数据
 BYTE TCA9535_Read_One(uint address,unsigned int command);      //单个读取内部寄存器数据
 uint32 TCA9535_Read_All(void);                    //连续的读取内部寄存器数据
+int TCA9535_Get_INT_Status(int d);
 
 #endif /* _TCA9535_H */ 

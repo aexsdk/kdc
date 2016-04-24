@@ -1338,8 +1338,6 @@
           <state>DEVICETYPE_COORDINATOR</state>
           <state>KKW_CC2530_BSP</state>
           <state>HAL_UART</state>
-          <state>HAL_LED=TRUE</state>
-          <state>BLINK_LEDS</state>
           <state>ZIGBEEPRO</state>
           <state>NWK_AUTO_POLL</state>
           <state>ZTOOL_P1</state>
@@ -1347,7 +1345,6 @@
           <state>xMT_SYS_FUNC</state>
           <state>xMT_ZDO_FUNC</state>
           <state>HAL_KEY=FALSE</state>
-          <state>KKW_USE_PORT0ISR</state>
           <state>KKW_USE_TCA9535</state>
         </option>
         <option>
@@ -1992,7 +1989,7 @@
         </option>
         <option>
           <name>ExtraOutputFile</name>
-          <state>SampleApp.hex</state>
+          <state>kdc.hex</state>
         </option>
         <option>
           <name>ExtraOutputFormat</name>
@@ -6404,18 +6401,6 @@
   </configuration>
   <group>
     <name>App</name>
-    <file>
-      <name>$PROJ_DIR$\Source\am2001.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\Source\am2001.h</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\Source\ds18b20.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\Source\ds18b20.h</name>
-    </file>
     <file>
       <name>$PROJ_DIR$\Source\i2c.c</name>
     </file>

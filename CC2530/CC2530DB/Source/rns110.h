@@ -8,7 +8,7 @@
 typedef unsigned char BYTE;
 typedef unsigned long   uint32;
 
-#define RNS110_IO_INT                     P0_6                //ÖÐ¶Ï
+#define RNS110_IO_INT                     P1_5                //ÖÐ¶Ï
 #define RNS110_IO_VEN                     P0_7
 #define RNS110_IO_UPGRADE                 P1_3
 

@@ -58,3 +58,10 @@ void Init_TCA9535()
   P0IFG &= BV(TCA9535_IO_INT_PIN);
   EA = 1;
 }
+
+
+int TCA9535_Get_INT_Status(int d)
+{
+  I2C_Delayus(d);
+  return TCA9535_IO_INT == 0;    //下降沿触发中断，防抖动
+}

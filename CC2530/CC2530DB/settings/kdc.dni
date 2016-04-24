@@ -1,6 +1,6 @@
 [DebugChecksum]
 <<<<<<< HEAD
-Checksum=547718124
+Checksum=1906392295
 =======
 Checksum=473075957
 >>>>>>> 3266ef44591566bb381cb6e5f09976eaa5f4be63
@@ -17,7 +17,8 @@ TriggerName=main
 LimitSize=0
 ByteLimit=50
 [DisAssemblyWindow]
-NumStates=_ 0
+NumStates=_ 1
+State 1=_ 1
 [InstructionProfiling]
 Enabled=_ 0
 [CodeCoverage]

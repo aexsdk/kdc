@@ -154,14 +154,12 @@ void ReportDeviceDiscovery(void);
 void SerialApp_Cmd(uint8 port,unsigned char *buf, uint8 len);
 void Delayms(int xms);
 void DelayXus(uint32 n);
-void kkw_gpio_set(uint8 index);
-void kkw_gpio_clr(uint8 index);
-
 void kkw_init_beep(void);
-void kkw_beep(uint8 onoff,uint32 timeout);
+void kkw_beep(uint8 onoff);
 void kkw_stop_beep_timeout(void);
 void TCA9535_ISR(void);
 void RNS110_ISR(void);
+void kkw_relay(uint8 index,uint8 onoff);
 void LogUart(char *fmt,...);
 int RNS110_Run_Read(int len);
 int RNS110_Test(char *msg);
@@ -173,35 +171,65 @@ int RNS110_Test(char *msg);
  * PUBLIC FUNCTIONS
  */
 
+void DelayXus(uint32 n)
+{
+  unsigned int i;
+  for(i = 0;i<n;i++);
+}
+
+void LogUart(char *fmt,...)
+{
+  char *log_uart_buf;
+  va_list args;
+  
+  log_uart_buf = osal_mem_alloc(CMD_MAX_LEN);
+  if(log_uart_buf != NULL){
+    memset(log_uart_buf,0,sizeof(log_uart_buf));  
+    va_start(args, fmt);
+    vsprintf(log_uart_buf, fmt, args);
+    va_end(args);
+    FeetDog();
+    App_SendSample((unsigned char*)log_uart_buf, strlen((char *)log_uart_buf)+1, KKW_EVT_LOG); 
+    osal_mem_free(log_uart_buf);
+  }
+}
+
 /**
  * Init beep to on.
 */
 void kkw_init_beep(void)
 {
-  KKW_IO_OUTPUT(1,0,0);
+  KKW_IO_OUTPUT(IO_BEEP_PORT,IO_BEEP_PIN,BEEP_OFF);
 }
-
 /**
- * Set beep on or off or beep a moent.
+ * Set beep on or off or beep amoent.
 */
-void kkw_beep(uint8 onoff,uint32 timeout)
+void kkw_beep(uint8 onoff)
 {
-  if(onoff == 0)
-    KKW_IO_SET(1,0,0);
-  else if(onoff == 1)
-    KKW_IO_SET(1,0,1);
-  else {
-    KKW_IO_SET(1,0,0);
-    //Delayms(onoff*250);
-    //KKW_IO_SET(1,0,1);
-    if(timeout != 0)
-      osal_start_timerEx( ParkingApp_TaskID,timeout, onoff*150);
+  if(onoff == 0 || onoff == 1){
+    KKW_IO_SET(IO_BEEP_PORT,IO_BEEP_PIN,onoff);
+  }else {
+    //beep on and timer for off
+    KKW_IO_SET(IO_BEEP_PORT,IO_BEEP_PIN,BEEP_ON);
+    osal_start_timerEx( ParkingApp_TaskID,KKWAPP_STOP_BEEP, onoff);
   }
 }
-
+/*
+  execute at beep timer timeout.
+*/
 void kkw_stop_beep_timeout(void)
 {
-  KKW_IO_SET(1,0,1);
+  kkw_beep(BEEP_OFF);
+  //KKW_IO_SET(IO_BEEP_PORT,IO_BEEP_PIN,BEEP_OFF);
+}
+
+void kkw_relay(uint8 index,uint8 onoff)
+{
+  if(index == 0){
+    KKW_IO_OUTPUT(IO_RELAY0_PORT,IO_RELAY0_PIN,onoff);
+  }else{
+    KKW_IO_OUTPUT(IO_RELAY1_PORT,IO_RELAY1_PIN,onoff);
+  }
 }
 
 /*********************************************************************
@@ -222,11 +250,14 @@ void ParkingApp_Init( uint8 task_id )
 {
   //uint8 r;
   halUARTCfg_t uartConfig;
-  
-#ifdef KKW_HAS_LED
-  HalLedBlink( HAL_LED_1, 10, 50, 1000 );
-#endif
+
+  //Enable watch dog.
+  SET_MAIN_CLOCK(0);
+  Init_Watchdog();
+  FeetDog();
+  //enable beep
   kkw_init_beep();
+
   ParkingApp_TaskID = task_id;
   ParkingApp_NwkState = DEV_INIT;
   ParkingApp_TransID = 0;
@@ -270,12 +301,7 @@ void ParkingApp_Init( uint8 task_id )
 
   // Register the endpoint description with the AF
   afRegister( &ParkingApp_epDesc );
-
-  // Register for all key events - This app will handle all key events
-  RegisterForKeys( ParkingApp_TaskID );
-  
   osal_pwrmgr_task_state( ParkingApp_TaskID, PWRMGR_CONSERVE );
-
   if(zgDeviceLogicalType == ZG_DEVICETYPE_COORDINATOR){
     // Config UART,Open the debug and coordonator uart for control
     uartConfig.configured           = TRUE;                 // 2x30 don't care - see uart driver.
@@ -291,24 +317,33 @@ void ParkingApp_Init( uint8 task_id )
     // Set TXPOWER
     MAC_MlmeSetReq( ZMacPhyTransmitPower, &txPower );
     App_SendSample("Coordinator started.",21,KKW_EVT_LOG);
-    ReportDeviceDiscovery();
   }else if(zgDeviceLogicalType == ZG_DEVICETYPE_ENDDEVICE){
     App_SendSample("End device started.",20,KKW_EVT_LOG);
   }
   
-    // By default, all devices start out in Group 1
+  //By default, all devices start out in Group 1
   ParkingApp_Group.ID = 0x0005;
   osal_memcpy( ParkingApp_Group.name, "kkwireless", 10  );
   aps_AddGroup( PARKINGAPP_ENDPOINT, &ParkingApp_Group );
-  
-  //初始化完成灭灯
-#ifdef KKW_HAS_LED
-  HalLedSet(HAL_LED_1,HAL_LED_MODE_ON);
+ 
+  Init_I2C();
+#ifdef KKW_USE_TCA9535
+  Init_TCA9535();
 #endif
-  //osal_start_timerEx( ParkingApp_TaskID,KKWAPP_START_TEMP_EVT,5000 );
-  //osal_start_timerEx( ParkingApp_TaskID,KKWAPP_START_HUMI_EVT,3000 );
-  //osal_start_timerEx( ParkingApp_TaskID,KKWAPP_START_KEYBOARD_EVT,500);
-  kkw_beep(1,0);
+#ifdef KKW_USE_POSITION
+  Init_PCF8574();
+#endif
+#ifdef KKW_USE_RNS110
+  Init_RNS110();
+#endif
+  //PICTL |= BV(3);      //端口2 0-4下降沿引起中断
+  //PICTL &= ~BV(3);     //端口2 0-4上升沿引起中断  
+  //IEN2 |= 0x10; // 允许P1口中断；   
+  kkw_relay(0,RELAY_OFF);
+  kkw_relay(1,RELAY_OFF);
+  EA = 1; 
+  kkw_beep(BEEP_OFF);
+  osal_start_timerEx( ParkingApp_TaskID,KKWAPP_DOG_TIMER,KKWAPP_DOG_TIMEOUT);
   osal_start_timerEx( ParkingApp_TaskID,KKWAPP_HEART_TIMER,KKWAPP_HEART_TIMEOUT);
 }
 
@@ -361,9 +396,6 @@ uint16 ParkingApp_ProcessEvent( uint8 task_id, uint16 events )
           case  DEV_END_DEVICE:         // Started as device after authentication
             //终端的网络状态改变事件
             // Start sending the periodic message in a regular interval.
-            #ifdef KKW_HAS_LED
-              HalLedBlink( HAL_LED_1, 2, 25, 50 );
-            #endif
             App_Init_Fun();
             break;
           case  DEV_ROUTER:             // Device joined, authenticated and is a router
@@ -372,9 +404,6 @@ uint16 ParkingApp_ProcessEvent( uint8 task_id, uint16 events )
             break;
           case  DEV_ZB_COORD:           // Started as Zigbee Coordinator
             //协调设备，我们需要传送信息给上位机报告协调器状态的改变
-            #ifdef KKW_HAS_LED
-              HalLedBlink( HAL_LED_1, 2, 25, 50 );
-            #endif
             App_Init_Fun();
             break;
           case  DEV_NWK_ORPHAN:          // Device has lost information about its parent..
@@ -396,24 +425,15 @@ uint16 ParkingApp_ProcessEvent( uint8 task_id, uint16 events )
     // return unprocessed events
     return (events ^ SYS_EVENT_MSG);
   }
-#ifdef KKW_HAL_TEMP  
-  if ( (events & KKWAPP_START_TEMP_EVT) == KKWAPP_START_TEMP_EVT){
-    Process_Read_Temp();
-    Feetg();
-    return (events ^ KKWAPP_START_TEMP_EVT);
-  }
-#endif
-#ifdef KKW_HAL_HUMI
-  if ( (events & KKWAPP_START_HUMI_EVT) == KKWAPP_START_HUMI_EVT){
-    Process_Read_Humi();
-    FeetDog();
-    return (events ^ KKWAPP_START_HUMI_EVT);
-  }
-#endif    
   if( (events & KKWAPP_STOP_BEEP_KEY) == KKWAPP_STOP_BEEP_KEY){
     kkw_stop_beep_timeout();
     FeetDog();
     return (events ^ KKWAPP_STOP_BEEP_KEY);
+  }
+  if( (events & KKWAPP_STOP_BEEP) == KKWAPP_STOP_BEEP){
+    kkw_stop_beep_timeout();
+    FeetDog();
+    return (events ^ KKWAPP_STOP_BEEP);
   }
   if( (events & KKWAPP_HEART_TIMER) == KKWAPP_HEART_TIMER ){
     uint16 v = KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF);
@@ -425,98 +445,10 @@ uint16 ParkingApp_ProcessEvent( uint8 task_id, uint16 events )
   }
   if( (events & KKWAPP_DOG_TIMER) == KKWAPP_DOG_TIMER){
     FeetDog();
-    //LogUart("Dog Timer");
     osal_start_timerEx(ParkingApp_TaskID,KKWAPP_DOG_TIMER,KKWAPP_DOG_TIMEOUT);
     return (events ^ KKWAPP_DOG_TIMER);
   }
   return 0;
-}
-
-#ifdef KKW_HAL_TEMP
-void Process_Read_Temp(void)
-{
-  /*
-      unsigned char buf1[5] = {0};
-      unsigned char buf2[5] = {0};
-      unsigned char buf[5] = {0};
-      unsigned char t[10] = {0};
-      unsigned short T = 0;
-      unsigned short t1 = 0;
-      unsigned short t2 = 0;;
-      int16 temp1 = 0;
-      int16 temp2 = 0;
-      int16 flag1 = 0;
-      int16 flag2 = 0;
-  
-       ds18b20_init();
-  
-       ds18b20_read(0,&temp1);
-       flag1 = temp1&0xF800;
-       t1 = (temp1&0x07F0)>>4;    
-       //sprintf(buf1,"%s%d",flag1==0?"":"-",t1);
-        
-       buf[0] = flag1&0xFF;
-       buf[1] = t1&0xFF;
-       buf[2] = 0;
-
-       ds18b20_read(1,&temp2);
-       flag2 = temp2&0xF800;
-       t2 = (temp2&0x07F0)>>4;     
-       //sprintf(buf2,"%s%d",flag2==0?"":"-",t2);
-      
-       buf[3] = flag2&0xFF;
-       buf[4] = t2&0xFF;
-       buf[5] = 1;
-
-       //App_SendSample(buf, 6, 0xE200); 
-       App_SendSample(buf, 6, 0xA001); 
-
-    osal_start_timerEx( ParkingApp_TaskID,KKWAPP_START_TEMP_EVT,tempTimeout );
-  */
-  
-  unsigned char buf[5];
-  unsigned char t[10];
-  int16 temp = 0;
-  
-  ds18b20_init();
-
-  ds18b20_read(0,&temp);
-
-  buf[0] = (temp>>8)&0xFF;
-  buf[1] = temp&0xFF;
-  buf[2] = 0;
-
-  ds18b20_read(1,&temp);
-  buf[3] = (temp>>8)&0xFF;
-  buf[4] = temp&0xFF;
-  buf[5] = 1;
-  
-  App_SendSample(buf, 6, 0xA001); 
-  osal_start_timerEx( ParkingApp_TaskID,KKWAPP_START_TEMP_EVT,tempTimeout );
-}
-#endif
-
-#ifdef KKW_HAL_HUMI
-void Process_Read_Humi(void)
-{
-  unsigned char buf[2] = {0};
-  uint16 humi = 0;
-  
-  am2001_init();
-
-  /*AM2001将读取端口和分辨率移到驱动外作为参数传入*/
-  humi = am2001_read(HAL_ADC_CHANNEL_7, HAL_ADC_RESOLUTION_10);
-  buf[0] = (humi>>8)&0xFF;
-  buf[1] = humi&0xFF;
-  App_SendSample(buf, 2, 0xA002); 
-  osal_start_timerEx( ParkingApp_TaskID,KKWAPP_START_HUMI_EVT,humiTimeout );
-}
-#endif
-
-void DelayXus(uint32 n)
-{
-  unsigned int i;
-  for(i = 0;i<n;i++);
 }
 
 /*********************************************************************
@@ -554,9 +486,6 @@ void ParkingApp_MessageMSGCB( afIncomingMSGPacket_t *pkt )
       //如果收到的数据包的第一个字节是0xFE则透传给上位机
       if(pkt->macDestAddr != 0xFFFF){
         if ( HalUARTWrite ( SERIAL_APP_PORT, pkt->cmd.Data, payloadlen)){
-          #ifdef KKW_HAS_LED
-            HalLedBlink( HAL_LED_1, 2, 25, 50);
-          #endif
         }
       }
     }
@@ -572,22 +501,6 @@ void ParkingApp_MessageMSGCB( afIncomingMSGPacket_t *pkt )
   FeetDog();
 }
 
-static char log_uart_buf[128];
-void LogUart(char *fmt,...)
-{
-  va_list args;
-  
-  FeetDog();
-  memset(log_uart_buf,0,sizeof(log_uart_buf));
-  
-  va_start(args, fmt);
-  vsprintf(log_uart_buf, fmt, args);
-  va_end(args);
-  
-  FeetDog();
-  App_SendSample((unsigned char*)log_uart_buf, strlen((char *)log_uart_buf)+1, KKW_EVT_LOG);     
-}
-
 //报告设备发现命令，如果是协调器则会直接通过串口上报，如果是终端设备则通过传感网
 void ReportDeviceDiscovery(void)
 {
@@ -598,7 +511,6 @@ void ReportDeviceDiscovery(void)
   unsigned char buf[1];
   uint16 option = KKW_EVT_FIND;
   
-  FeetDog();
   buf[0]=0x01;
   App_SendSample(buf, 1, option); 
 }
@@ -617,75 +529,9 @@ void ReportDeviceDiscovery(void)
 void App_Init_Fun(void)
 {
   int ret = 0;
-  
-  //ReportDeviceDiscovery();
-  kkw_beep(1,0);
-  Init_I2C();
-#ifdef KKW_USE_TCA9535
-  Init_TCA9535();
-#endif
-#ifdef KKW_USE_POSITION
-  Init_PCF8574();
-#endif
-  Init_RNS110();
-  ret = RNS110_Reset();
-  LogUart("Reset %d",ret);
-  ret = RNS110_Test("\0x00\0x00\0x00\0x00");
-  //LogUart("Write %d bytes",ret);
 
-#ifdef USE_PRE_IO_PORT 
-  //KKW_GPIO_PULL_DN(KKIO_IN_1);    //P1.1
-  KKW_GPIO_PULL_DN(KKIO_IN_2);    //P1.2
-  KKW_GPIO_PULL_DN(KKIO_IN_3);    //P1.3
-
-  KKW_GPIO_PULL_DN(KKIO_IN_4);    //P1.4
-  KKW_GPIO_PULL_DN(KKIO_IN_5);    //P1.5
-  KKW_GPIO_PULL_DN(KKIO_IN_6);    //P1.6
-  KKW_GPIO_PULL_DN(KKIO_IN_7);    //P1.7
-   PICTL &= ~BV(1);     //端口1 0-3上升沿引起中断
-   PICTL &= ~BV(2);     //端口1 4-7上升沿引起中断
-  //PICTL |= BV(1);      //端口1 0-3下降沿引起中断
-   //PICTL |= BV(2);      //端口1 4-7下降沿引起中断
-   //PICTL |= BV(3);      //端口2 0-4下降沿引起中断
-   PICTL &= ~BV(3);     //端口2 0-4上升沿引起中断
-   
-  IEN2 |= 0x10; // 允许P1口中断；
-  EA = 1; 
-#endif
-   
-#ifdef KKW_USE_PORT0ISR
-  //端口0上使用中断，I2C使用P0.0做中断
-  //P0IEN |= BV(0);       //P0.0可以产生中断
-  //PICTL |= BV(0);      //端口0 0-7下降沿引起中断
-  //PICTL &= ~BV(0);     //端口0 0-7上升沿引起中断
-  //IEN1 |= BV(5);
-  //P0IFG &= BV(0);
-  //EA = 1;
-  
-  KKW_IO_OUTPUT(0,7,1);   //拉高NFC_VEN引脚，复位N110
-#endif
-   
-#ifdef KKW_HAL_TEMP
-      PICTL &= ~BV(0);     //端口0 0-7上升沿引起中断
-      PICTL &= ~BV(1);     //端口1 0-3上升沿引起中断
-#endif
-  
-#ifdef USE_PRE_IOPORT  
-  KKW_GPIO_OUTPUT(KKIO_OUT_0,0);   //P0.0
-  KKW_GPIO_OUTPUT(KKIO_OUT_1,0);   //P0.1
-  KKW_GPIO_OUTPUT(KKIO_OUT_2,0);   //P0.6
-  KKW_GPIO_OUTPUT(KKIO_OUT_4,0);   //P2.0
-  KKW_GPIO_OUTPUT(KKIO_OUT_5,0);   //P2.1
-  KKW_GPIO_OUTPUT(KKIO_OUT_6,0);   //P2.2
-  KKW_GPIO_OUTPUT(KKIO_OUT_7,0);   //P2.3
-#endif
-   KKW_IO_OUTPUT(1,6,1);  //设置继电器1的控制为输出
-   KKW_IO_OUTPUT(1,7,1);  //设置继电器2的控制为输出
-
-  SET_MAIN_CLOCK(0);
-  Init_Watchdog();
-  FeetDog();
-  osal_start_timerEx( ParkingApp_TaskID,KKWAPP_DOG_TIMER,KKWAPP_DOG_TIMEOUT);
+  ReportDeviceDiscovery();
+  kkw_beep(BEEP_OFF);
 }
 
 void Delayms(int xms)   //i=xms 
@@ -715,11 +561,12 @@ void RNS110_ISR(void)
   //从NFC读取数据的指令
   if(RNS110_Get_INT_Status(10000)){
     BYTE len;
+    char buf[] = {0xFF,0xFD,0xFF};
     
     //RNS110_Disable_irq();
-    LogUart("RNS110_ISR");
-    Delayms(50);
-    char buf[] = {0xFF,0xFD,0xFF};
+    //LogUart("RNS110_ISR");
+    //Delayms(50);
+    //报告NFC有数据了
     App_SendSample(buf,sizeof(buf),KKW_EVT_NFC_HAVEDATA);
     /*if(len != 0xFF){
       LogUart("RSN110 Read %d bytes",len);
@@ -741,46 +588,47 @@ void TCA9535_ISR(void)
   uint16 value;
   char buf[20];
   
-  value = KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF);
-  if(value == 0xFFFF){
-    #if 0
-      buf[0] = (unsigned char)((value>>8)&0xFF);
-      buf[1] = (unsigned char)value&0xFF;
-      //上报按键按下原始信息
-      App_SendSample(buf, 2, KKW_EVT_IO | TCA9535_IC_SlaveAddress);
-    #else
-
-      if(b != -1){
+  if(TCA9535_Get_INT_Status(500)){
+    value = KKW_I2CIO_GetValue(TCA9535_IC_SlaveAddress,0xFFFF);
+    if(value == 0xFFFF){
+      #if 0
+        buf[0] = (unsigned char)((value>>8)&0xFF);
+        buf[1] = (unsigned char)value&0xFF;
+        //上报按键按下原始信息
+        App_SendSample(buf, 2, KKW_EVT_IO | TCA9535_IC_SlaveAddress);
+      #else
+        if(b != -1){
+            //正式使用上报按键信息
+            memset(buf,0,sizeof(buf));
+            buf[0] = (unsigned char)((keypad>>8)&0xFF);
+            buf[1] = (unsigned char)keypad&0xFF;
+            buf[2] = 10;
+            App_SendSample(buf, 3, KKW_EVT_IN_MIN|(TCA9535_IC_SlaveAddress<<4)|b );
+            b = -1;
+        }
+      #endif
+    }else{
+      #if 0
+        //调试上报按键按下原始信息
+        buf[0] = (unsigned char)((value>>8)&0xFF);
+        buf[1] = (unsigned char)value&0xFF;
+        App_SendSample(buf, 2, KKW_EVT_IO | TCA9535_IC_SlaveAddress);
+      #else
+        keypad = ~value;
+        b = find_bit(keypad);
+        if(b != -1){
           //正式使用上报按键信息
+          /*
           memset(buf,0,sizeof(buf));
           buf[0] = (unsigned char)((keypad>>8)&0xFF);
           buf[1] = (unsigned char)keypad&0xFF;
-          buf[2] = 10;
+          buf[2] = 0;
           App_SendSample(buf, 3, KKW_EVT_IN_MIN|(TCA9535_IC_SlaveAddress<<4)|b );
-          b = -1;
-      }
-    #endif
-  }else{
-    #if 0
-      //调试上报按键按下原始信息
-      buf[0] = (unsigned char)((value>>8)&0xFF);
-      buf[1] = (unsigned char)value&0xFF;
-      App_SendSample(buf, 2, KKW_EVT_IO | TCA9535_IC_SlaveAddress);
-    #else
-      keypad = ~value;
-      b = find_bit(keypad);
-      if(b != -1){
-        //正式使用上报按键信息
-        /*
-        memset(buf,0,sizeof(buf));
-        buf[0] = (unsigned char)((keypad>>8)&0xFF);
-        buf[1] = (unsigned char)keypad&0xFF;
-        buf[2] = 0;
-        App_SendSample(buf, 3, KKW_EVT_IN_MIN|(TCA9535_IC_SlaveAddress<<4)|b );
-        */
-        kkw_beep(2,KKWAPP_STOP_BEEP_KEY);
-      }
-    #endif
+          */
+          kkw_beep(200+b*2);
+        }
+      #endif
+    }
   }
 }
 
@@ -794,84 +642,16 @@ HAL_ISR_FUNCTION( halKeyPort0Isr, P0INT_VECTOR )
   EA=0;
   
   FeetDog();
-  Delayms(10);
   if((P0IFG & 0x01)==0x01) //p0.0  
   { 
     //I2C产生中断
     //KEY使用P0.0中断
 #ifdef KKW_USE_TCA9535
-    //sprintf(buf,"IO=0x%X",value);
     TCA9535_ISR();
-    //App_SendSample(buf, strlen((char *)buf), KKW_EVT_LOG);
-#endif
-
-#ifdef KKW_USE_POSITION
-    buf[0] = PCF8574_Read_One(IO_SlaveAddress0);
-    App_SendSample(buf, 1, KKW_EVT_IO | IO_SlaveAddress0);
-    buf[0] = PCF8574_Read_One(IO_SlaveAddress1);
-    App_SendSample(buf, 1, KKW_EVT_IO | IO_SlaveAddress1);
-    buf[0] = PCF8574_Read_One(IO_SlaveAddress2);
-    App_SendSample(buf, 1, KKW_EVT_IO | IO_SlaveAddress2);
-    buf[0] = PCF8574_Read_One(IO_SlaveAddress3);
-    App_SendSample(buf, 1, KKW_EVT_IO | IO_SlaveAddress3);
-    buf[0] = PCF8574_Read_One(IO_SlaveAddress4);
-    App_SendSample(buf, 1, KKW_EVT_IO | IO_SlaveAddress4);
-    buf[0] = PCF8574_Read_One(IO_SlaveAddress5);
-    App_SendSample(buf, 1, KKW_EVT_IO | IO_SlaveAddress5);
-    buf[0] = PCF8574_Read_One(IO_SlaveAddress7);
-    App_SendSample(buf, 1, KKW_EVT_IO | IO_SlaveAddress7);
 #endif
     P0IFG &= ~0x01;
   }
-  if((P0IFG & 0x40) == 0x40) //p0.6
-  {    
-    //LogUart("RNS110 ISR");
-    RNS110_ISR();
-    P0IFG &= ~0x40;
-  }
-  /*if((P0IFG & 0x02) == 0x02) //p0.1
-  {    
-    P0IFG &= ~0x02;
-    buf[0] = 0x00;
-    App_SendSample(buf, 1, 0xC001);
-  }
-  if((P0IFG & 0x04) == 0x04) //p0.2
-  {    
-    P0IFG &= ~0x04;
-    buf[0] = 0x00;
-    App_SendSample(buf, 1, 0xC002);
-  }
-  if((P0IFG & 0x08) == 0x08) //p0.3
-  {    
-    P0IFG &= ~0x08;
-    buf[0] = 0x00;
-    App_SendSample(buf, 1, 0xC003);
-  }
-  if((P0IFG & 0x10) == 0x10) //p0.4
-  {    
-    P0IFG &= ~0x10;
-    buf[0] = 0x00;
-    App_SendSample(buf, 1, 0xC004);
-  }
-  if((P0IFG & 0x20) == 0x20) //p0.5
-  {    
-    P0IFG &= ~0x20;
-    buf[0] = 0x00;
-    App_SendSample(buf, 1, 0xC005);
-  }
-  if((P0IFG & 0x40) == 0x40) //p0.6
-  {    
-    P0IFG &= ~0x40;
-    buf[0] = 0x00;
-    App_SendSample(buf, 1, 0xC006);
-  }
-  if((P0IFG & 0x80) == 0x80) //p0.7
-  {    
-    //NFC使用P0.7中断
-    P0IFG &= ~0x80;
-  }
-  */
-  //P0IFG = 0x00; //P0.0~P0.7中断标志清0 
+  P0IFG = 0x00; //P0.0~P0.7中断标志清0 
   P0IF = 0;
   EA = 1;
 }
@@ -887,64 +667,21 @@ HAL_ISR_FUNCTION( halKeyPort1Isr, P1INT_VECTOR )
   EA=0;
   
   FeetDog();
-  Delayms(10);
-  /*if((P1IFG & 0x01)==0x01) //p1.0  p1.0 连接了LED
-  {    
-    P1IFG &= ~0x01;
-    buf[0] = KKW_GPIO_GET(KKIO_IN_2);
-    App_SendSample(buf, 1, 0xC010);
-  }*/
-#ifndef KKW_HAL_TEMP
-  if((P1IFG & 0x02) == 0x02) //p1.1
-  {    
-    P1IFG &= ~0x02;
-    buf[0] = KKW_GPIO_GET(KKIO_IN_1);
-    App_SendSample(buf, 1, 0xC011);
-  }
-  if((P1IFG & 0x04) == 0x04) //p1.2
+  /*if((P1IFG & 0x04) == 0x04) //p1.2
   {    
     P1IFG &= ~0x04;
     buf[0] = KKW_GPIO_GET(KKIO_IN_2);
     App_SendSample(buf, 1, 0xC012);
-  }
-  if((P1IFG & 0x08) == 0x08) //p1.3
-  {    
-    P1IFG &= ~0x08;
-    buf[0] = KKW_GPIO_GET(KKIO_IN_3);
-    App_SendSample(buf, 1, 0xC013);
-  }
-#endif
-  if((P1IFG & 0x10) == 0x10) //p1.4
-  {    
-    P1IFG &= ~0x10;
-    buf[0] = KKW_GPIO_GET(KKIO_IN_4);
-    App_SendSample(buf, 1, 0xC014);
-  }
+  }*/
   if((P1IFG & 0x20) == 0x20) //p1.5
-  {    
+  {
+    RNS110_ISR();    
     P1IFG &= ~0x20;
-    buf[0] = KKW_GPIO_GET(KKIO_IN_5);
-    App_SendSample(buf, 1, 0xC015);
-  }
-  if((P1IFG & 0x40) == 0x40) //p1.6
-  {    
-    P1IFG &= ~0x40;
-    buf[0] = KKW_GPIO_GET(KKIO_IN_6);
-    App_SendSample(buf, 1, 0xC016);
-  }
-  if((P1IFG & 0x80) == 0x80) //p1.7
-  {    
-    P1IFG &= ~0x80;
-    buf[0] = KKW_GPIO_GET(KKIO_IN_7);
-    App_SendSample(buf, 1, 0xC017);
   }
   
   P1IFG = 0x00; //P1.0~P1.7中断标志清0 
   P1IF = 0;
   EA = 1;
-  #ifdef KKW_HAS_LED
-    HalLedBlink( HAL_LED_1, 2, 25, 50 );
-  #endif
 }
 #endif
 
@@ -992,9 +729,6 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
                           AF_DISCV_ROUTE, // AF_SKIP_ROUTING,
                           AF_DEFAULT_RADIUS ) == afStatus_SUCCESS )
         {
-          #ifdef KKW_HAS_LED
-          HalLedBlink( HAL_LED_1, 2, 25, 50 );
-          #endif
         }else{
           // Error occurred in request to send.
         }
@@ -1004,47 +738,6 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
       }
     }
     break;
-  case KKW_CMD_TEMP:
-    { 
-      //启动温湿度检测
-#if defined(KKW_HAL_TEMP)
-      if(command->length == 2){
-        
-        
-        uint16 timeout = ((command->controlmsg[0])<<8) + command->controlmsg[1];
-        tempTimeout = timeout;
-        osal_start_timerEx( ParkingApp_TaskID,KKWAPP_START_TEMP_EVT,tempTimeout );
-      }
-#endif
-    }
-    break;
-  case KKW_CMD_HUMI:
-    {
-      //启动温湿度检测
-#if defined(KKW_HAL_HUMI)
-      if(command->length == 2){
-           
-        uint16 timeout = ((command->controlmsg[0])<<8) + command->controlmsg[1];
-        humiTimeout = timeout;
-        osal_start_timerEx( ParkingApp_TaskID,KKWAPP_START_HUMI_EVT,humiTimeout );
-      }
-#endif
-    }
-    break;
-/*位置检测使用中断检测
-  case KKW_CMD_POSITION:
-  {
-      //启动位置检测
-#if defined(KKW_HAL_POSITION)
-      if(command->length == 2){
-        uint16 timeout = ((command->controlmsg[0])<<8) + command->controlmsg[1];
-        positionTimeout = timeout;
-        osal_start_timerEx( ParkingApp_TaskID,KKWAPP_START_POSITION_EVT,positionTimeout );
-      }
-#endif
-    }
-    break;
-*/
   case KKW_CMD_OPEN_UART0:
     baudrate = command->controlmsg[0];
     result = openUart(0, baudrate); // open uart 0
@@ -1064,28 +757,6 @@ void Process_Command(cmd_msg_t* command/*uint8 *msgBuf*/, uint16 len)
   case KKW_CMD_WRITE_UART1:
     //向串口1写数据
     writeUart(1, command);    
-    break;
-  case KKW_CMD_SETIO_MAX:
-    {
-      //对预设的8个输出口操作,同时设置多个O口
-      int i;
-      uint8 sel;
-      uint8 opt;
-      if(command->length <2){
-        sel = command->controlmsg[0]; //选择
-        opt = command->controlmsg[1]; //值
-        for(i=0;i<sizeof(uint8);i++){
-          uint8 t = 1 << i ;
-          if((sel & t) == t){
-            if((opt & t) == t){
-              kkw_gpio_set(i);
-            }else{
-              kkw_gpio_clr(i);
-            }
-          }
-        }
-      }
-    }
     break;
   case KKW_EVT_DEBUG_TEST:
     { 
@@ -1220,69 +891,6 @@ int RNS110_Test(char *msg)
   }
 }
 
-//设置预设的8个输出口OUT高电平
-void kkw_gpio_set(uint8 index)
-{
-  switch(index)
-  {
-  case 0:
-    KKW_GPIO_SET(KKIO_OUT_0);
-    break;
-  case 1:
-    KKW_GPIO_SET(KKIO_OUT_1);
-    break;
-  case 2:
-    KKW_GPIO_SET(KKIO_OUT_2);
-    break;
-  case 3:
-    KKW_GPIO_SET(KKIO_OUT_3);
-    break;
-  case 4:
-    KKW_GPIO_SET(KKIO_OUT_4);
-    break;
-  case 5:
-    KKW_GPIO_SET(KKIO_OUT_5);
-    break;
-  case 6:
-    KKW_GPIO_SET(KKIO_OUT_6);
-    break;
-  case 7:
-    KKW_GPIO_SET(KKIO_OUT_7);
-    break;
-  }
-}
-//设置预设的8个输出为低电平
-void kkw_gpio_clr(uint8 index)
-{
-  switch(index)
-  {
-  case 0:
-    KKW_GPIO_CLR(KKIO_OUT_0);
-    break;
-  case 1:
-    KKW_GPIO_CLR(KKIO_OUT_1);
-    break;
-  case 2:
-    KKW_GPIO_CLR(KKIO_OUT_2);
-    break;
-  case 3:
-    KKW_GPIO_CLR(KKIO_OUT_3);
-    break;
-  case 4:
-    KKW_GPIO_CLR(KKIO_OUT_4);
-    break;
-  case 5:
-    KKW_GPIO_CLR(KKIO_OUT_5);
-    break;
-  case 6:
-    KKW_GPIO_CLR(KKIO_OUT_6);
-    break;
-  case 7:
-    KKW_GPIO_CLR(KKIO_OUT_7);
-    break;
-  }
-}
-
 /*
   设置IO的函数，可以对2530的P0.1~P0.7和P1.0~P1.7以及P2.0,P2.1,P2.2等作高低电平设置。
 是否可以设置成功还取决于对IO口的输入输出配置。
@@ -1393,9 +1001,7 @@ void writeUart(uint8 whichport, cmd_msg_t* command)
 {
   if(HalUARTWrite ( whichport, command->controlmsg, command->length))
   {
-    #ifdef KKW_HAS_LED
-    HalLedBlink( HAL_LED_1, 2, 25, 50);
-    #endif
+    //ledblink
   }
 }
 
@@ -1563,41 +1169,44 @@ static void SerialApp_CallBack(uint8 port, uint8 event)
 void App_SendSample(unsigned char *buf, unsigned char len, uint16 option) 
 {
   uint8 packetLen=0;
-  app_msg_t packet;
+  app_msg_t *packet;
   
-  memset(&packet,0,sizeof(packet));
-  packet.head = 0xFE;
+  packet = osal_mem_alloc(sizeof(app_msg_t));
+  
+  if(packet == NULL)return;
+  memset(packet,0,sizeof(app_msg_t));
+  packet->head = 0xFE;
   //    packet.nodeid = theNodeID;
   SendSeqno++;
   if(SendSeqno == 0xFE){
     SendSeqno = 1;
   }
-  packet.seqno = SendSeqno; 
-  memcpy(packet.IEEEAddr, NLME_GetExtAddr(), 8);//IEEE address 64 bit
-  packet.rssi = 0x00;
-  packet.cmd[0] = (option>>8)&0xFF;
-  packet.cmd[1] = option&0xFF;
-  packet.len = len;
+  packet->seqno = SendSeqno; 
+  memcpy(packet->IEEEAddr, NLME_GetExtAddr(), 8);//IEEE address 64 bit
+  packet->rssi = 0x00;
+  packet->cmd[0] = (option>>8)&0xFF;
+  packet->cmd[1] = option&0xFF;
+  packet->len = len;
   packetLen = sizeof(app_msg_t)-CMD_MAX_LEN;
 
   if(len > CMD_MAX_LEN){
     len = CMD_MAX_LEN;      //当数据超过缓冲区大小时丢弃超出的部分
   }
-  memcpy(packet.data, buf, len);
-  packet.data[len++] = 0x00;
-  //packet.end = 0xAA;
+  memcpy(packet->data, buf, len);
+  packet->data[len++] = 0x00;
+  //packet->end = 0xAA;
   
   if(zgDeviceLogicalType == ZG_DEVICETYPE_ENDDEVICE){
     //AF_SKIP_ROUTING -  will cause the device to skip
     //routing and try to send the message directly
     myAddr = NLME_GetShortAddr();  
-    packet.myAddr[0] = (myAddr>>8)&0xFF;
-    packet.myAddr[1] = myAddr&0xFF;
+    packet->myAddr[0] = (myAddr>>8)&0xFF;
+    packet->myAddr[1] = myAddr&0xFF;
     afStatus_t r = AF_DataRequest( &ParkingApp_Periodic_DstAddr,  //Full ZB destination address: Nwk Addr + End Point.
                       &ParkingApp_epDesc,             //Origination (i.e. respond to or ack to) End Point Descr.
                       PARKINGAPP_PERIODIC_CLUSTERID,  //A valid cluster ID as specified by the Profile.
                       packetLen,                      //Number of bytes of data pointed to by next param.
-                      (byte*) &packet,                //( A pointer to the data bytes to send.
+                      (byte*)packet,                //( A pointer to the data bytes to send.
                       &ParkingApp_TransID,            //A pointer to a byte which can be modified and which will be used as the transaction sequence number of the msg.
     #if (defined DATABROADCAST && DATABROADCAST == TRUE)
                       AF_SKIP_ROUTING, //  AF_DISCV_ROUTE //Valid bit mask of Tx options.
@@ -1625,10 +1234,9 @@ void App_SendSample(unsigned char *buf, unsigned char len, uint16 option)
     }
   }else if(zgDeviceLogicalType == ZG_DEVICETYPE_COORDINATOR){
     //协调器发送命令，直接通过串口
-    packet.myAddr[0] = 0x00;
-    packet.myAddr[1] = 0x00;
-    HalUARTWrite ( SERIAL_APP_PORT, (byte *)&packet, packetLen + len);
+    packet->myAddr[0] = 0x00;
+    packet->myAddr[1] = 0x00;
+    HalUARTWrite ( SERIAL_APP_PORT, (byte *)packet, packetLen + len);
   }
+  osal_mem_free(packet);
 }
-/*********************************************************************
-********************************************************************/
