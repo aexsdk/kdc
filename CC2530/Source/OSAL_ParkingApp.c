@@ -23,7 +23,7 @@
   its documentation for any purpose.
 
   YOU FURTHER ACKNOWLEDGE AND AGREE THAT THE SOFTWARE AND DOCUMENTATION ARE
-  PROVIDED “AS IS” WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+  PROVIDED “AS IS?WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED,
   INCLUDING WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY, TITLE,
   NON-INFRINGEMENT AND FITNESS FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL
   TEXAS INSTRUMENTS OR ITS LICENSORS BE LIABLE OR OBLIGATED UNDER CONTRACT,
@@ -70,9 +70,11 @@
 
 // The order in this table must be identical to the task initialization calls below in osalInitTask.
 const pTaskEventHandlerFn tasksArr[] = {
-  macEventLoop,
-  nwk_event_loop,
+  
+  //macEventLoop,
+  //nwk_event_loop,
   Hal_ProcessEvent,
+  /*
 #if defined( MT_TASK )
   MT_ProcessEvent,
 #endif
@@ -84,6 +86,7 @@ const pTaskEventHandlerFn tasksArr[] = {
 #if defined ( ZIGBEE_FREQ_AGILITY ) || defined ( ZIGBEE_PANID_CONFLICT )
   ZDNwkMgr_event_loop,
 #endif
+  */
   ParkingApp_ProcessEvent
 };
 
@@ -109,10 +112,11 @@ void osalInitTasks( void )
 
   tasksEvents = (uint16 *)osal_mem_alloc( sizeof( uint16 ) * tasksCnt);
   osal_memset( tasksEvents, 0, (sizeof( uint16 ) * tasksCnt));
-
-  macTaskInit( taskID++ );
-  nwk_init( taskID++ );
+  
+  //macTaskInit( taskID++ );
+  //nwk_init( taskID++ );
   Hal_Init( taskID++ );
+  /*
 #if defined( MT_TASK )
   MT_TaskInit( taskID++ );
 #endif
@@ -124,6 +128,7 @@ void osalInitTasks( void )
 #if defined ( ZIGBEE_FREQ_AGILITY ) || defined ( ZIGBEE_PANID_CONFLICT )
   ZDNwkMgr_Init( taskID++ );
 #endif
+  */
   ParkingApp_Init( taskID );
 }
 

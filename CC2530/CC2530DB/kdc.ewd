@@ -832,7 +832,7 @@
         </option>
         <option>
           <name>ChipconEraseFlash</name>
-          <state>0</state>
+          <state>1</state>
         </option>
         <option>
           <name>ChipconRetainMemory</name>
@@ -852,7 +852,7 @@
         </option>
         <option>
           <name>ChipconReduceSpeed</name>
-          <state>0</state>
+          <state>1</state>
         </option>
         <option>
           <name>ChipconStackOverflow</name>
@@ -1253,7 +1253,7 @@
         </option>
         <option>
           <name>SimPspConfigFile</name>
-          <state>###Uninitialized###</state>
+          <state>$TOOLKIT_DIR$\config\test.psp.config</state>
         </option>
       </data>
     </settings>

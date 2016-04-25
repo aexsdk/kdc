@@ -1338,12 +1338,6 @@
           <state>DEVICETYPE_COORDINATOR</state>
           <state>KKW_CC2530_BSP</state>
           <state>HAL_UART</state>
-          <state>ZIGBEEPRO</state>
-          <state>NWK_AUTO_POLL</state>
-          <state>ZTOOL_P1</state>
-          <state>xMT_TASK</state>
-          <state>xMT_SYS_FUNC</state>
-          <state>xMT_ZDO_FUNC</state>
           <state>HAL_KEY=FALSE</state>
           <state>KKW_USE_TCA9535</state>
         </option>
@@ -1791,7 +1785,7 @@
         </option>
         <option>
           <name>OutputFile</name>
-          <state>kdc.d51</state>
+          <state>kdc.a51</state>
         </option>
         <option>
           <name>OutputFormat</name>
@@ -1965,7 +1959,7 @@
         </option>
         <option>
           <name>DebugInformation</name>
-          <state>0</state>
+          <state>1</state>
         </option>
         <option>
           <name>RuntimeControl</name>

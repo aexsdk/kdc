@@ -212,21 +212,14 @@ typedef struct {
 #define KKW_EVT_RECV_UART1              0xE202      //协调器或终端的UART1上收到的数据
 #define KKW_EVT_DEBUG_TEST              0xE300      
 #define KKW_EVT_FIND                    0xB101      //模块发现或丢失命令
-#define KKW_EVT_TEMP                    0xB201      //向上位机报告温度信息
-#define KKW_EVT_HUMI                    0xB202      //向上位机报告湿度信息
-#define KKW_EVT_POSITION                0xB203      //向上位机报告酒位状态信息
 #define KKW_EVT_KEYPAD                  0xB300      //报告按键信息
 #define KKW_EVT_NFC_READ                0xBD01      //
 #define KKW_EVT_NFC_UNINIT              0xBD02      //
 #define KKW_EVT_NFC_HAVEDATA            0xBD03
 #define KKW_EVT_NODEFINE                0x0000
 
-#define KKWAPP_EVT_MSG_START            0x0010
-#define KKWAPP_START_TEMP_EVT           0x0011
-#define KKWAPP_START_HUMI_EVT           0x0012
-#define KKWAPP_START_POSITION_EVT       0x0014
-#define KKWAPP_STOP_BEEP_KEY            0x0018
-#define KKWAPP_STOP_BEEP                0x0020
+#define KKWAPP_EVT_MSG_START            0x8010
+#define KKWAPP_EVT_STOP_BEEP            0x8020
 
 #define KKWAPP_HEART_TIMER              0x1000
 #define KKWAPP_DOG_TIMER                0x2000
